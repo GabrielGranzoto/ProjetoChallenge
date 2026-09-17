@@ -1,0 +1,30 @@
+/* ==========================================================================
+   CAMERA APP - MOBILE FIRST STYLES
+   ========================================================================== */
+
+/* Esconde a barra de rolagem mantendo a funcionalidade de scroll */
+.modes-scroll {
+  -ms-overflow-style: none; /* IE e Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+
+.modes-scroll::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari e Opera */
+}
+
+/* Animação do Obturador ao Clicar/Tocar */
+#btn-shutter:active span {
+  transform: scale(0.9);
+  transition: transform 0.1s ease-in-out;
+}
+
+/* Transição suave para troca de modos */
+.mode-tab {
+  transition: color 0.2s ease, font-weight 0.2s ease;
+}
+
+/* Classe ativa para o modo selecionado */
+.mode-tab.active {
+  color: #fbbf24; /* Tailwind amber-400 */
+  font-weight: 700;
+}
