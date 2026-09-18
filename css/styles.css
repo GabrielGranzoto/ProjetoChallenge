@@ -27,4 +27,29 @@
 .mode-tab.active {
   color: #fbbf24; /* Tailwind amber-400 */
   font-weight: 700;
+
+/* Suporte para efeito de vidro fosco no Safari (iOS) */
+#ai-suggestion-card {
+  -webkit-backdrop-filter: blur(12px); /* Compatibilidade Safari */
+  backdrop-filter: blur(12px);
+}
+
+/* Animação suave para exibir/ocultar o painel de IA */
+#ai-suggestion-panel {
+  transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
+}
+
+#ai-suggestion-panel.hidden {
+  display: none;
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+
+
+
+
+
+
+
 }
