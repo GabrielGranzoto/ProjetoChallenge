@@ -18,8 +18,10 @@
 // `img` é o arquivo dentro de images/ (caminho relativo a pages/gallery.html).
 // `cor` são as duas cores do gradiente usado enquanto a imagem carrega
 // ou se o arquivo não existir.
+// `foco` (opcional) é o ponto da foto que fica visível na miniatura quadrada
+// (formato "x% y%"). Use quando o assunto principal não está no centro da imagem.
 const MOCK_FOTOS = [
-  { id: 'm1', img: '../images/comida-1.jpg',    cor: ['#f59e0b', '#7c2d12'], modo: 'Foto',    contexto: 'Comida',   preset: 'Comida',   score: 94, dias: 0 },
+  { id: 'm1', img: '../images/comida-1.jpg',    foco: '50% 80%', cor: ['#f59e0b', '#7c2d12'], modo: 'Foto',    contexto: 'Comida',   preset: 'Comida',   score: 94, dias: 0 },
   { id: 'm2', img: '../images/paisagem-1.jpg',  cor: ['#22c55e', '#0c4a6e'], modo: 'Foto',    contexto: 'Paisagem', preset: 'Paisagem', score: 91, dias: 0 },
   { id: 'm3', img: '../images/noite-1.jpg',     cor: ['#1e1b4b', '#6d28d9'], modo: 'Noite',   contexto: 'Noturno',  preset: 'Noite',    score: 78, dias: 1 },
   { id: 'm4', img: '../images/retrato-1.jpg',   cor: ['#f472b6', '#831843'], modo: 'Retrato', contexto: 'Pessoas',  preset: 'Retrato',  score: 88, dias: 1 },
@@ -53,28 +55,44 @@ function carregarFotos() {
     ...m,
     data: new Date(Date.now() - m.dias * 86400000).toISOString(),
     detalhes: JoviScore.detalhesSimulados(m.score, m.id),
+    imgEstado: m.img ? 'carregando' : 'erro', // ver carregarImagens()
   }));
 }
 
-// Testa cada arquivo de images/. Se existir, passa a usar a foto (`src`) e redesenha;
-// se não existir, a foto continua com o gradiente, sem erro visível.
+// Testa cada arquivo de images/ e registra o resultado em `foto.imgEstado`:
+//   'carregando' -> ainda testando (miniatura fica cinza, sem piscar colorido)
+//   'ok'         -> arquivo existe: usa a foto (`src`)
+//   'erro'       -> arquivo não existe: usa o gradiente de exemplo
 function carregarImagens() {
   state.fotos.forEach((foto) => {
     if (!foto.img) return;
+
     const teste = new Image();
     teste.onload = () => {
       foto.src = foto.img;
-      render();
-      // Se o visualizador estiver aberto nessa foto, atualiza a imagem dele também
-      if (state.abertaId === foto.id) $('viewer-img').style.backgroundImage = fundo(foto);
+      foto.imgEstado = 'ok';
+      atualizarAposImagem(foto);
+    };
+    teste.onerror = () => {
+      foto.imgEstado = 'erro';
+      atualizarAposImagem(foto);
     };
     teste.src = foto.img;
   });
 }
 
-// Valor de `background-image` da foto: imagem real (src) ou o gradiente de exemplo
+// Redesenha a tela e, se o visualizador estiver aberto nessa foto, atualiza a imagem dele
+function atualizarAposImagem(foto) {
+  render();
+  if (state.abertaId === foto.id) $('viewer-img').style.backgroundImage = fundo(foto);
+}
+
+// Valor de `background-image` da foto: imagem real, cinza (carregando) ou gradiente de exemplo
 function fundo(foto) {
-  if (foto.src) return `url("${foto.src}")`;
+  // Aspas simples de propósito: esse valor é colocado dentro de style="..." no HTML,
+  // e aspas duplas aqui fechariam o atributo e quebrariam o estilo.
+  if (foto.src) return `url('${foto.src}')`;
+  if (foto.imgEstado === 'carregando') return 'linear-gradient(#171717, #171717)';
   const [a, b] = foto.cor || ['#525252', '#171717'];
   return `linear-gradient(135deg, ${a}, ${b})`;
 }
@@ -161,7 +179,7 @@ function tile(f) {
   const ehMelhor = total > 1 && melhor.id === f.id;
   return `
     <button data-id="${f.id}" class="relative aspect-square bg-cover bg-center active:opacity-75 transition"
-            style="background-image:${fundo(f)}" aria-label="Abrir foto ${f.preset}">
+            style="background-image:${fundo(f)};background-position:${f.foco || 'center'}" aria-label="Abrir foto ${f.preset}">
       ${f.score >= SCORE_MELHOR ? `<span class="tile-label absolute bottom-1 left-1.5 text-[11px] font-medium">★ ${f.score}</span>` : ''}
       ${ehMelhor ? `<span class="absolute top-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px]">Melhor da sequência</span>` : ''}
     </button>`;
@@ -200,7 +218,7 @@ function renderAlbuns() {
     const capa = fotos.reduce((a, b) => (b.score > a.score ? b : a), fotos[0]);
     return `
       <button data-album="${ctx}" class="text-left active:opacity-75 transition">
-        <span class="block aspect-square rounded-xl bg-cover bg-center" style="background-image:${fundo(capa)}"></span>
+        <span class="block aspect-square rounded-xl bg-cover bg-center" style="background-image:${fundo(capa)};background-position:${capa.foco || 'center'}"></span>
         <span class="block mt-2 text-sm font-medium">${ctx}</span>
         <span class="block text-xs text-neutral-400">${plural(fotos.length, 'foto')}</span>
       </button>`;
@@ -259,10 +277,13 @@ function abrirFoto(id) {
   $('viewer-best').dataset.id = outra ? seq.melhor.id : '';
 
   $('viewer').classList.remove('hidden');
+  // Trava a rolagem da página de trás enquanto o visualizador está aberto
+  document.body.classList.add('overflow-hidden');
 }
 
 function fecharFoto() {
   $('viewer').classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
   state.abertaId = null;
 }
 
