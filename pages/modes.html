@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>JOVI Modes</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Arquivo de Estilos Externo -->
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="bg-black text-white antialiased select-none">
+
+  <div class="relative w-full min-h-dvh max-w-md mx-auto bg-black">
+
+    <!-- CABEÇALHO -->
+    <header class="sticky top-0 z-20 bg-black px-4 pt-5 pb-3">
+      <div class="flex items-start justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight">JOVI Modes</h1>
+          <p id="modes-count" class="text-xs text-neutral-400 mt-0.5"></p>
+        </div>
+        <a href="../index.html" aria-label="Voltar para a câmera"
+           class="w-10 h-10 rounded-full flex items-center justify-center text-neutral-300 active:bg-neutral-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </a>
+      </div>
+    </header>
+
+    <main class="safe-bottom px-4">
+
+      <!-- CONTEXT MODE (chave geral) -->
+      <section class="rounded-2xl bg-neutral-900 p-4 flex items-center gap-3">
+        <span class="w-11 h-11 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+          <i data-lucide="sparkles" class="w-5 h-5 text-amber-400"></i>
+        </span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold">Context Mode</p>
+          <p id="context-status" class="text-xs text-neutral-400 leading-snug"></p>
+        </div>
+        <label class="relative inline-flex shrink-0 cursor-pointer">
+          <input id="context-toggle" type="checkbox" class="peer sr-only" aria-label="Ativar Context Mode">
+          <span class="w-11 h-6 rounded-full bg-neutral-700 transition peer-checked:bg-amber-400 peer-focus-visible:ring-2 peer-focus-visible:ring-white
+                       after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5"></span>
+        </label>
+      </section>
+
+      <!-- LISTA DE PRESETS -->
+      <section class="mt-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-medium text-neutral-300">Seus presets</h2>
+          <button id="btn-new" class="flex items-center gap-1.5 rounded-full bg-amber-400 text-black text-xs font-semibold pl-3 pr-4 py-2 active:scale-95 transition">
+            <i data-lucide="plus" class="w-4 h-4"></i>Novo preset
+          </button>
+        </div>
+
+        <div id="list" class="space-y-2.5"></div>
+
+        <div id="empty" class="hidden text-center text-neutral-500 text-sm py-14">
+          <i data-lucide="layers" class="w-9 h-9 mx-auto mb-2"></i>
+          Você ainda não criou nenhum preset.
+        </div>
+      </section>
+    </main>
+
+    <!-- BARRA INFERIOR -->
+    <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 z-20 w-full max-w-md bg-black border-t border-neutral-800 flex"
+         style="padding-bottom: env(safe-area-inset-bottom, 0px)">
+      <a href="../index.html" class="flex-1 flex flex-col items-center gap-1 py-2.5 text-neutral-400 text-[11px]">
+        <i data-lucide="camera" class="w-5 h-5"></i>Câmera
+      </a>
+      <a href="gallery.html" class="flex-1 flex flex-col items-center gap-1 py-2.5 text-neutral-400 text-[11px]">
+        <i data-lucide="images" class="w-5 h-5"></i>Galeria
+      </a>
+      <span aria-current="page" class="flex-1 flex flex-col items-center gap-1 py-2.5 text-amber-400 text-[11px] font-medium">
+        <i data-lucide="layers" class="w-5 h-5"></i>Modes
+      </span>
+    </nav>
+
+    <!-- PAINEL: CRIAR / EDITAR PRESET -->
+    <div id="sheet" class="fixed inset-0 z-30 hidden">
+      <div id="sheet-overlay" class="absolute inset-0 bg-black/70"></div>
+
+      <div class="sheet-in absolute bottom-0 inset-x-0 mx-auto w-full max-w-md max-h-[92dvh] flex flex-col rounded-t-2xl bg-neutral-900">
+
+        <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-neutral-800">
+          <button id="sheet-close" aria-label="Fechar"
+                  class="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-neutral-300 active:bg-neutral-800 transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+          <h2 id="sheet-title" class="text-base font-semibold"></h2>
+          <button id="btn-save" class="rounded-full bg-amber-400 text-black text-sm font-semibold px-4 py-1.5 active:scale-95 transition">Salvar</button>
+        </div>
+
+        <div class="overflow-y-auto px-4 py-5 space-y-6">
+
+          <!-- Nome -->
+          <div>
+            <label for="f-nome" class="block text-xs font-medium text-neutral-400 mb-1.5">Nome do preset</label>
+            <input id="f-nome" type="text" maxlength="24" placeholder="Ex.: Almoço no fim de semana"
+                   class="w-full rounded-xl bg-neutral-800 px-4 py-3 text-base text-white placeholder-neutral-500 outline-none focus:ring-1 focus:ring-neutral-500 select-text">
+            <p id="f-erro" class="hidden text-xs text-pink-400 mt-1.5">Dê um nome ao preset.</p>
+          </div>
+
+          <!-- Contexto -->
+          <div>
+            <p class="text-xs font-medium text-neutral-400 mb-2">Tipo de cena</p>
+            <div id="f-contexto" class="grid grid-cols-5 gap-2"></div>
+          </div>
+
+          <!-- Gatilhos -->
+          <div>
+            <p class="text-xs font-medium text-neutral-400 mb-2">Ativar automaticamente por</p>
+            <div class="rounded-xl bg-neutral-800 divide-y divide-neutral-700">
+
+              <div class="p-3.5">
+                <div class="flex items-center gap-3">
+                  <i data-lucide="map-pin" class="w-4 h-4 text-neutral-400"></i>
+                  <span class="flex-1 text-sm">Local (GPS)</span>
+                  <label class="relative inline-flex cursor-pointer">
+                    <input id="t-local" type="checkbox" class="peer sr-only" aria-label="Ativar por local">
+                    <span class="w-11 h-6 rounded-full bg-neutral-600 transition peer-checked:bg-amber-400 peer-focus-visible:ring-2 peer-focus-visible:ring-white
+                                 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5"></span>
+                  </label>
+                </div>
+                <div id="g-local" class="hidden mt-3">
+                  <input id="f-local" type="text" maxlength="30" placeholder="Ex.: Restaurantes"
+                         class="w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-base text-white placeholder-neutral-500 outline-none focus:ring-1 focus:ring-neutral-500 select-text">
+                </div>
+              </div>
+
+              <div class="p-3.5">
+                <div class="flex items-center gap-3">
+                  <i data-lucide="clock" class="w-4 h-4 text-neutral-400"></i>
+                  <span class="flex-1 text-sm">Horário</span>
+                  <label class="relative inline-flex cursor-pointer">
+                    <input id="t-horario" type="checkbox" class="peer sr-only" aria-label="Ativar por horário">
+                    <span class="w-11 h-6 rounded-full bg-neutral-600 transition peer-checked:bg-amber-400 peer-focus-visible:ring-2 peer-focus-visible:ring-white
+                                 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5"></span>
+                  </label>
+                </div>
+                <div id="g-horario" class="hidden mt-3 flex items-center gap-2">
+                  <input id="f-de" type="time" aria-label="Horário inicial"
+                         class="flex-1 min-w-0 rounded-lg bg-neutral-900 px-3 py-2.5 text-base text-white outline-none focus:ring-1 focus:ring-neutral-500 select-text">
+                  <span class="text-xs text-neutral-500">até</span>
+                  <input id="f-ate" type="time" aria-label="Horário final"
+                         class="flex-1 min-w-0 rounded-lg bg-neutral-900 px-3 py-2.5 text-base text-white outline-none focus:ring-1 focus:ring-neutral-500 select-text">
+                </div>
+              </div>
+
+              <div class="p-3.5">
+                <div class="flex items-center gap-3">
+                  <i data-lucide="sun" class="w-4 h-4 text-neutral-400"></i>
+                  <span class="flex-1 text-sm">Nível de luz</span>
+                  <label class="relative inline-flex cursor-pointer">
+                    <input id="t-luz" type="checkbox" class="peer sr-only" aria-label="Ativar por luz">
+                    <span class="w-11 h-6 rounded-full bg-neutral-600 transition peer-checked:bg-amber-400 peer-focus-visible:ring-2 peer-focus-visible:ring-white
+                                 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5"></span>
+                  </label>
+                </div>
+                <div id="g-luz" class="hidden mt-3">
+                  <select id="f-luz" aria-label="Nível de luz"
+                          class="w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-base text-white outline-none focus:ring-1 focus:ring-neutral-500">
+                    <option value="baixa">Luz baixa</option>
+                    <option value="media">Luz média</option>
+                    <option value="alta">Luz alta</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ajustes -->
+          <div>
+            <p class="text-xs font-medium text-neutral-400 mb-2">Ajustes da imagem</p>
+            <div class="rounded-xl bg-neutral-800 p-3.5 space-y-4">
+              <div>
+                <div class="flex justify-between text-sm mb-1.5"><label for="f-exposicao">Exposição</label><span id="v-exposicao" class="text-neutral-400"></span></div>
+                <input id="f-exposicao" type="range" min="-2" max="2" step="0.5" class="w-full accent-amber-400">
+              </div>
+              <div>
+                <div class="flex justify-between text-sm mb-1.5"><label for="f-saturacao">Saturação</label><span id="v-saturacao" class="text-neutral-400"></span></div>
+                <input id="f-saturacao" type="range" min="0" max="100" step="5" class="w-full accent-amber-400">
+              </div>
+              <div>
+                <div class="flex justify-between text-sm mb-1.5"><label for="f-contraste">Contraste</label><span id="v-contraste" class="text-neutral-400"></span></div>
+                <input id="f-contraste" type="range" min="0" max="100" step="5" class="w-full accent-amber-400">
+              </div>
+            </div>
+          </div>
+
+          <button id="btn-delete" class="hidden w-full rounded-full border border-neutral-700 py-2.5 text-sm font-medium text-pink-400 active:bg-neutral-800 transition">
+            Excluir preset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aviso -->
+    <div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 z-40 rounded-lg bg-neutral-800 px-4 py-2.5 text-sm shadow-lg whitespace-nowrap"
+         style="bottom: calc(env(safe-area-inset-bottom, 0px) + 4.5rem)"></div>
+
+  </div>
+
+  <script src="../js/presets.js"></script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>JOVI Gallery</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Arquivo de Estilos Externo -->
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="bg-black text-white antialiased select-none">
+
+  <div class="relative w-full min-h-dvh max-w-md mx-auto bg-black">
+
+    <!-- CABEÇALHO -->
+    <header class="sticky top-0 z-20 bg-black">
+      <div class="flex items-start justify-between px-4 pt-5">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight">Galeria</h1>
+          <p id="photo-count" class="text-xs text-neutral-400 mt-0.5">0 fotos</p>
+        </div>
+        <button id="btn-sort" aria-label="Ordenar"
+                class="w-10 h-10 rounded-full flex items-center justify-center text-neutral-300 active:bg-neutral-800 transition">
+          <i data-lucide="arrow-up-down" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Busca -->
+      <div class="relative mx-4 mt-3">
+        <i data-lucide="search" class="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+        <input id="search" type="search" placeholder="Buscar por preset, contexto ou modo"
+               class="w-full rounded-xl bg-neutral-900 pl-10 pr-4 py-2.5 text-sm text-white placeholder-neutral-500 outline-none focus:ring-1 focus:ring-neutral-600 select-text">
+      </div>
+
+      <!-- Abas -->
+      <div class="flex mt-3 border-b border-neutral-800">
+        <button data-aba="fotos" class="tab flex-1 py-3 text-sm font-medium border-b-2 transition">Fotos</button>
+        <button data-aba="albuns" class="tab flex-1 py-3 text-sm font-medium border-b-2 transition">Álbuns</button>
+      </div>
+    </header>
+
+    <main class="safe-bottom">
+
+      <!-- ABA FOTOS -->
+      <section id="view-fotos">
+        <div class="modes-scroll overflow-x-auto px-4 pt-3">
+          <div id="filters" class="flex gap-2 whitespace-nowrap"></div>
+        </div>
+
+        <!-- Título do filtro ativo -->
+        <div id="filter-bar" class="hidden flex items-center justify-between px-4 pt-4">
+          <div>
+            <h2 id="filter-title" class="text-base font-semibold"></h2>
+            <p id="filter-desc" class="text-xs text-neutral-400 mt-0.5"></p>
+          </div>
+          <button id="filter-clear" class="text-xs font-medium text-amber-400 px-3 py-1.5 rounded-full active:bg-neutral-800">Limpar</button>
+        </div>
+
+        <div id="grid" class="pt-1"></div>
+
+        <div id="empty" class="hidden text-center text-neutral-500 text-sm py-16">
+          <i data-lucide="image-off" class="w-9 h-9 mx-auto mb-2"></i>
+          Nenhuma foto encontrada.
+        </div>
+      </section>
+
+      <!-- ABA ÁLBUNS -->
+      <section id="view-albuns" class="hidden px-4 pt-4">
+        <p class="text-xs text-neutral-400 mb-3">Organizados automaticamente pelo contexto detectado em cada foto.</p>
+        <div id="albums" class="grid grid-cols-2 gap-x-3 gap-y-5"></div>
+      </section>
+    </main>
+
+    <!-- BARRA INFERIOR -->
+    <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 z-20 w-full max-w-md bg-black border-t border-neutral-800 flex"
+         style="padding-bottom: env(safe-area-inset-bottom, 0px)">
+      <a href="../index.html" class="flex-1 flex flex-col items-center gap-1 py-2.5 text-neutral-400 text-[11px]">
+        <i data-lucide="camera" class="w-5 h-5"></i>Câmera
+      </a>
+      <span aria-current="page" class="flex-1 flex flex-col items-center gap-1 py-2.5 text-amber-400 text-[11px] font-medium">
+        <i data-lucide="images" class="w-5 h-5"></i>Galeria
+      </span>
+      <a href="modes.html" class="flex-1 flex flex-col items-center gap-1 py-2.5 text-neutral-400 text-[11px]">
+        <i data-lucide="layers" class="w-5 h-5"></i>Modes
+      </a>
+    </nav>
+
+    <!-- VISUALIZADOR -->
+    <div id="viewer" class="fixed inset-0 z-30 bg-black hidden">
+      <div class="viewer-in relative w-full h-dvh max-w-md mx-auto flex flex-col">
+
+        <div class="flex items-center justify-between px-2 pt-3 pb-2">
+          <button id="viewer-close" aria-label="Fechar"
+                  class="w-11 h-11 rounded-full flex items-center justify-center active:bg-neutral-800 transition">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+          </button>
+          <span id="viewer-date" class="text-sm text-neutral-300"></span>
+          <button id="viewer-delete" aria-label="Excluir"
+                  class="w-11 h-11 rounded-full flex items-center justify-center active:bg-neutral-800 transition">
+            <i data-lucide="trash-2" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div id="viewer-img" class="flex-1 bg-contain bg-center bg-no-repeat"></div>
+
+        <!-- Detalhes -->
+        <div class="rounded-t-2xl bg-neutral-900 px-4 pt-4 pb-5 space-y-4"
+             style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem)">
+          <div class="flex items-start justify-between">
+            <div>
+              <p id="viewer-preset" class="text-base font-semibold"></p>
+              <p id="viewer-context" class="text-xs text-neutral-400 mt-0.5"></p>
+            </div>
+            <div class="text-right">
+              <p class="text-2xl font-semibold text-amber-400 leading-none"><span id="viewer-score"></span><span class="text-xs font-normal text-neutral-500">/100</span></p>
+              <p class="text-[10px] text-neutral-500 mt-1">Score JOVI</p>
+            </div>
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-3 text-xs text-neutral-400">
+              <span class="w-20">Luz</span>
+              <div class="flex-1 h-1 rounded-full bg-neutral-800"><div id="bar-luz" class="h-full rounded-full bg-amber-400 transition-all duration-500"></div></div>
+              <span id="bar-luz-val" class="w-6 text-right text-neutral-200"></span>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-neutral-400">
+              <span class="w-20">Nitidez</span>
+              <div class="flex-1 h-1 rounded-full bg-neutral-800"><div id="bar-nitidez" class="h-full rounded-full bg-amber-400 transition-all duration-500"></div></div>
+              <span id="bar-nitidez-val" class="w-6 text-right text-neutral-200"></span>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-neutral-400">
+              <span class="w-20">Composição</span>
+              <div class="flex-1 h-1 rounded-full bg-neutral-800"><div id="bar-comp" class="h-full rounded-full bg-amber-400 transition-all duration-500"></div></div>
+              <span id="bar-comp-val" class="w-6 text-right text-neutral-200"></span>
+            </div>
+          </div>
+
+          <div class="flex gap-3 pt-3 border-t border-neutral-800 text-sm text-neutral-300 leading-snug">
+            <i data-lucide="info" class="w-4 h-4 text-neutral-500 shrink-0 mt-0.5"></i>
+            <p id="viewer-tip"></p>
+          </div>
+
+          <button id="viewer-best" class="hidden w-full rounded-full border border-neutral-700 py-2.5 text-sm font-medium active:bg-neutral-800 transition">
+            Ver a melhor foto da sequência
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aviso -->
+    <div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 z-40 rounded-lg bg-neutral-800 px-4 py-2.5 text-sm shadow-lg whitespace-nowrap"
+         style="bottom: calc(env(safe-area-inset-bottom, 0px) + 4.5rem)"></div>
+
+  </div>
+
+  <script src="../js/score.js"></script>
+  <script src="../js/gallery.js"></script>
+</body>
+</html>
