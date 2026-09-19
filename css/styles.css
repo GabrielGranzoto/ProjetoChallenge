@@ -2,6 +2,18 @@
    CAMERA APP - MOBILE FIRST STYLES
    ========================================================================== */
 
+/* Cores da IA (Cam Assist, Context Mode, chip de preset).
+   O âmbar fica só para o estado da câmera (modo ativo, obturador, foco). */
+:root {
+  --ai-from: #7c3aed; /* violeta */
+  --ai-to: #d112b3;   /* magenta */
+}
+
+/* Fundo em degradê usado em tudo que é "IA" */
+.ai-gradient {
+  background-image: linear-gradient(135deg, var(--ai-from), var(--ai-to));
+}
+
 /* Esconde a barra de rolagem mantendo a funcionalidade de scroll */
 .modes-scroll {
   -ms-overflow-style: none; /* IE e Edge */
@@ -57,10 +69,33 @@
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
 }
 
+/* ==========================================================================
+   TELA DA CÂMERA
+   ========================================================================== */
+
+/* Anel de foco que aparece onde o usuário toca no visor */
+@keyframes focus-pulse {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+  20%  { opacity: 1; }
+  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
+.focus-ring {
+  animation: focus-pulse 1s ease-out both;
+}
+
 /* Classe ativa para o modo selecionado */
 .mode-tab.active {
   color: #fbbf24; /* Tailwind amber-400 */
   font-weight: 700;
+}
+
+/* Botão de IA ligado (Context Mode) */
+#btn-ai.ai-on {
+  background-image: linear-gradient(135deg, var(--ai-from), var(--ai-to));
+  border-color: transparent;
+}
 
 /* Suporte para efeito de vidro fosco no Safari (iOS) */
 #ai-suggestion-card {
@@ -68,22 +103,12 @@
   backdrop-filter: blur(12px);
 }
 
-/* Animação suave para exibir/ocultar o painel de IA */
-#ai-suggestion-panel {
-  transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
+/* Card de sugestão desce suavemente ao aparecer */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
 }
 
-#ai-suggestion-panel.hidden {
-  display: none;
-  opacity: 0;
-  transform: translateY(-8px);
-}
-
-
-
-
-
-
-
-
+.card-in {
+  animation: card-in 0.25s ease-out both;
 }
