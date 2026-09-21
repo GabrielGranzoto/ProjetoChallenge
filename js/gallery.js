@@ -1,6 +1,7 @@
 /* ==========================================================================
    JOVI GALLERY
-   Depende de js/score.js (JoviScore). Dados apenas em memória (simulador).
+   Depende de js/score.js (JoviScore) e js/store.js (JoviStore). As fotos de exemplo
+   ficam só em memória; as tiradas na câmera vêm do JoviStore.
    Fotos de exemplo usam gradientes no lugar de imagens.
 
    Como o arquivo está organizado:
@@ -51,12 +52,33 @@ const plural = (n, s) => `${n} ${s}${n === 1 ? '' : 's'}`;
 
 // Transforma os dados de exemplo em fotos completas (com data e detalhes)
 function carregarFotos() {
-  return MOCK_FOTOS.map((m) => ({
+  const exemplos = MOCK_FOTOS.map((m) => ({
     ...m,
-    data: new Date(Date.now() - m.dias * 86400000).toISOString(),
+    // -5 min: as fotos tiradas agora na câmera sempre aparecem antes das de exemplo do dia
+    data: new Date(Date.now() - m.dias * 86400000 - 300000).toISOString(),
     detalhes: JoviScore.detalhesSimulados(m.score, m.id),
     imgEstado: m.img ? 'carregando' : 'erro', // ver carregarImagens()
   }));
+
+  // Fotos tiradas na câmera (js/camera.js), guardadas no JoviStore com o score que a IA deu.
+  // A imagem é uma miniatura embutida (data:) ou o caminho de um arquivo de images/.
+  const capturas = JoviStore.lerCapturas().map((c) => ({
+    id: c.id,
+    src: c.src.startsWith('data:') ? c.src : '../' + c.src,
+    cor: ['#525252', '#171717'],
+    modo: c.modo,
+    contexto: c.contexto,
+    preset: c.preset,
+    score: c.score,
+    dias: 0,
+    data: new Date(c.ts).toISOString(),
+    detalhes: c.detalhes || JoviScore.detalhesSimulados(c.score, c.id),
+    imgEstado: 'ok',
+    capturada: true,
+    editada: !!c.editada,
+  }));
+
+  return [...capturas, ...exemplos];
 }
 
 // Testa cada arquivo de images/ e registra o resultado em `foto.imgEstado`:
@@ -174,13 +196,14 @@ function renderTituloFiltro(qtd) {
 }
 
 // HTML de uma miniatura do grid. Mostra ★ nota (se for boa) e o selo de melhor da sequência
-function tile(f) {
+function tile(f, i = 0) {
   const { total, melhor } = melhorDaSequencia(f);
   const ehMelhor = total > 1 && melhor.id === f.id;
   return `
-    <button data-id="${f.id}" class="relative aspect-square bg-cover bg-center active:opacity-75 transition"
-            style="background-image:${fundo(f)};background-position:${f.foco || 'center'}" aria-label="Abrir foto ${f.preset}">
+    <button data-id="${f.id}" class="tile-in relative aspect-square bg-cover bg-center"
+            style="background-image:${fundo(f)};background-position:${f.foco || 'center'};--i:${Math.min(i, 14)}" aria-label="Abrir foto ${f.preset}">
       ${f.score >= SCORE_MELHOR ? `<span class="tile-label absolute bottom-1 left-1.5 text-[11px] font-medium">★ ${f.score}</span>` : ''}
+      ${f.editada ? `<span class="absolute bottom-1 right-1.5 text-amber-300"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></span>` : ''}
       ${ehMelhor ? `<span class="absolute top-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px]">Melhor da sequência</span>` : ''}
     </button>`;
 }
@@ -196,13 +219,13 @@ function renderGrid() {
   if (state.ordem === 'score') {
     $('grid').innerHTML = `
       <h3 class="px-4 pt-4 pb-2 text-sm font-medium text-neutral-300">Maior score primeiro</h3>
-      <div class="grid grid-cols-3 gap-0.5">${lista.map(tile).join('')}</div>`;
+      <div class="grid grid-cols-3 gap-0.5">${lista.map((f, i) => tile(f, i)).join('')}</div>`;
   } else {
     const grupos = {};
     lista.forEach((f) => { (grupos[dia(f)] ||= []).push(f); });
     $('grid').innerHTML = Object.entries(grupos).map(([d, fotos]) => `
       <h3 class="px-4 pt-4 pb-2 text-sm font-medium text-neutral-300 capitalize">${rotuloDia(d)}</h3>
-      <div class="grid grid-cols-3 gap-0.5">${fotos.map(tile).join('')}</div>`).join('');
+      <div class="grid grid-cols-3 gap-0.5">${fotos.map((f, i) => tile(f, i)).join('')}</div>`).join('');
   }
 
   renderFiltros();
@@ -254,15 +277,17 @@ function barra(id, valor) {
 
 // Abre o visualizador com os dados da foto. O botão "melhor da sequência"
 // só aparece quando existe outra foto parecida com nota maior.
-function abrirFoto(id) {
+function abrirFoto(id, direcao = 0) {
   const f = state.fotos.find((x) => x.id === id);
   if (!f) return;
   state.abertaId = id;
+  animarTroca(direcao);
   const seq = melhorDaSequencia(f);
 
   $('viewer-img').style.backgroundImage = fundo(f);
   $('viewer-preset').textContent = `Preset ${f.preset}`;
-  $('viewer-context').textContent = `${f.modo} · ${f.contexto}`;
+  $('viewer-context').textContent = `${f.modo} · ${f.contexto}${f.editada ? ' · Editada com IA' : ''}`;
+  atualizarPosicao();
   $('viewer-score').textContent = f.score;
   $('viewer-date').textContent = new Date(f.data).toLocaleDateString('pt-BR', {
     day: 'numeric', month: 'short', year: 'numeric',
@@ -281,17 +306,77 @@ function abrirFoto(id) {
   document.body.classList.add('overflow-hidden');
 }
 
+// Lista em que o visualizador navega: a mesma que aparece no grid (filtro, busca e ordem atuais)
+function listaNavegacao() {
+  return fotosFiltradas();
+}
+
+function atualizarPosicao() {
+  const lista = listaNavegacao();
+  const i = lista.findIndex((f) => f.id === state.abertaId);
+  $('viewer-pos').textContent = i >= 0 ? `${i + 1} de ${lista.length}` : '';
+  $('viewer-prev').classList.toggle('invisible', i <= 0);
+  $('viewer-next').classList.toggle('invisible', i < 0 || i >= lista.length - 1);
+}
+
+// Vai para a foto anterior (-1) ou próxima (+1)
+function navegar(delta) {
+  if (!state.abertaId || (window.JoviEditor && JoviEditor.aberto())) return;
+  const lista = listaNavegacao();
+  const i = lista.findIndex((f) => f.id === state.abertaId);
+  const alvo = lista[i + delta];
+  if (alvo) abrirFoto(alvo.id, delta);
+}
+
+// A foto entra deslizando do lado de onde veio o gesto
+function animarTroca(direcao) {
+  if (!direcao) return;
+  const el = $('viewer-img');
+  el.classList.remove('slide-from-right', 'slide-from-left');
+  void el.offsetWidth; // reinicia a animação
+  el.classList.add(direcao > 0 ? 'slide-from-right' : 'slide-from-left');
+}
+
+// Arrastar a foto para o lado (dedo ou mouse) troca de foto
+function ligarGesto() {
+  const palco = $('viewer-stage');
+  let x0 = null, y0 = 0;
+  palco.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; });
+  palco.addEventListener('pointerup', (e) => {
+    if (x0 === null) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) navegar(dx < 0 ? 1 : -1);
+  });
+  palco.addEventListener('pointercancel', () => { x0 = null; });
+}
+
+// Recarrega as fotos (depois de salvar uma edição) e abre a nova
+function aposEdicao(novoId) {
+  state.fotos = carregarFotos();
+  carregarImagens();
+  render();
+  abrirFoto(novoId);
+  toast('Foto editada salva na galeria');
+}
+
 function fecharFoto() {
+  if (window.JoviEditor) JoviEditor.fechar();
   $('viewer').classList.add('hidden');
   document.body.classList.remove('overflow-hidden');
   state.abertaId = null;
 }
 
 function excluirFoto() {
-  if (!state.abertaId) return;
+  if (!state.abertaId || JoviEditor.aberto()) return;
+  const alvo = state.fotos.find((f) => f.id === state.abertaId);
+  if (alvo && alvo.capturada) JoviStore.removerCaptura(alvo.id); // some também da memória do app
+  const lista = listaNavegacao();
+  const i = lista.findIndex((f) => f.id === state.abertaId);
+  const vizinha = lista[i + 1] || lista[i - 1];
   state.fotos = state.fotos.filter((f) => f.id !== state.abertaId);
-  fecharFoto();
   render();
+  if (vizinha) abrirFoto(vizinha.id, 1); else fecharFoto();
 }
 
 /* ---------- Avisos ---------- */
@@ -360,7 +445,20 @@ function init() {
     const id = e.currentTarget.dataset.id;
     if (id) abrirFoto(id);
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharFoto(); });
+  $('viewer-prev').addEventListener('click', () => navegar(-1));
+  $('viewer-next').addEventListener('click', () => navegar(1));
+  $('viewer-edit').addEventListener('click', () => {
+    const f = state.fotos.find((x) => x.id === state.abertaId);
+    if (f) JoviEditor.abrir(f, aposEdicao);
+  });
+  ligarGesto();
+  document.addEventListener('keydown', (e) => {
+    if (!state.abertaId) return;
+    const editando = JoviEditor.aberto();
+    if (e.key === 'Escape') { editando ? JoviEditor.fechar() : fecharFoto(); }
+    else if (e.key === 'ArrowLeft') navegar(-1);
+    else if (e.key === 'ArrowRight') navegar(1);
+  });
 
   render();
   carregarImagens();

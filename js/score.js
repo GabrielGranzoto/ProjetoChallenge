@@ -17,7 +17,7 @@ const JoviScore = (() => {
     return {
       luz: clamp(score + v),
       nitidez: clamp(score - v),
-      composicao: clamp(score + v * 0.5),
+      composicao: clamp(Math.round(score + v * 0.5)),
     };
   }
 

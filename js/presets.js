@@ -1,12 +1,14 @@
 /* ==========================================================================
-   JOVI MODES — lista e criação de presets (simulador, dados em memória)
+   JOVI MODES — lista e criação de presets (simulador).
+   Persistência: js/store.js (localStorage) guarda entre sessões; guardarPresets()
+   também espelha em sessionStorage para a câmera ler na mesma aba.
    Formato de um preset:
    { id, nome, contexto, ativo, usos, ultimoUso (dias atrás ou null),
      gatilhos: { local: {ativo, texto}, horario: {ativo, de, ate}, luz: {ativo, nivel} },
      ajustes:  { exposicao, saturacao, contraste } }
 
    Como o arquivo está organizado:
-   1. Dados e estado     -> presets de exemplo e o objeto `state`
+   1. Dados e estado     -> o objeto `state` (os presets vêm de js/store.js)
    2. Textos de apoio    -> resumos exibidos nos cards
    3. Renderização       -> montam a lista de presets e o cabeçalho
    4. Painel             -> formulário de criar/editar (bottom sheet)
@@ -17,7 +19,7 @@
    e `usos`/`ultimoUso`, a HISTORICO_USO_PRESET.
    ========================================================================== */
 
-// Tipos de cena disponíveis e o ícone (Lucide) de cada um
+// Tipos de cena disponíveis e o ícone de cada um (ver js/icons.js)
 const CONTEXTOS = {
   Comida:        { icone: 'utensils' },
   Paisagem:      { icone: 'mountain' },
@@ -33,47 +35,12 @@ const AJUSTES_PADRAO = { exposicao: 0, saturacao: 50, contraste: 50 };
 
 // Estado único da tela. Tudo que aparece é desenhado a partir daqui.
 const state = {
-  presets: [    // presets de exemplo; novos entram no início da lista
-    {
-      id: 'p1', nome: 'Comida', contexto: 'Comida', ativo: true, usos: 24, ultimoUso: 0,
-      gatilhos: {
-        local: { ativo: true, texto: 'Restaurantes' },
-        horario: { ativo: true, de: '11:30', ate: '14:30' },
-        luz: { ativo: false, nivel: 'media' },
-      },
-      ajustes: { exposicao: 0.5, saturacao: 70, contraste: 55 },
-    },
-    {
-      id: 'p2', nome: 'Paisagem', contexto: 'Paisagem', ativo: true, usos: 17, ultimoUso: 1,
-      gatilhos: {
-        local: { ativo: true, texto: 'Parques e praias' },
-        horario: { ativo: false, de: '06:00', ate: '09:00' },
-        luz: { ativo: true, nivel: 'alta' },
-      },
-      ajustes: { exposicao: -0.5, saturacao: 65, contraste: 60 },
-    },
-    {
-      id: 'p3', nome: 'Noite', contexto: 'Noite', ativo: true, usos: 9, ultimoUso: 3,
-      gatilhos: {
-        local: { ativo: false, texto: '' },
-        horario: { ativo: true, de: '19:00', ate: '05:00' },
-        luz: { ativo: true, nivel: 'baixa' },
-      },
-      ajustes: { exposicao: 1, saturacao: 45, contraste: 50 },
-    },
-    {
-      id: 'p4', nome: 'Retrato', contexto: 'Retrato', ativo: false, usos: 5, ultimoUso: 8,
-      gatilhos: {
-        local: { ativo: false, texto: '' },
-        horario: { ativo: false, de: '08:00', ate: '18:00' },
-        luz: { ativo: false, nivel: 'media' },
-      },
-      ajustes: { exposicao: 0, saturacao: 50, contraste: 45 },
-    },
-  ],
-  contextoAtivo: true,  // chave geral "Context Mode"
+  // Presets já salvos, ou a lista de exemplo na primeira vez (js/presets-exemplo.js,
+  // espelhada em PRESETS_PADRAO dentro do store). Novos presets entram no início.
+  presets: JoviStore.carregarPresets(),
+  contextoAtivo: JoviStore.carregarContexto(), // chave geral "Context Mode"
   editandoId: null,     // id do preset no painel (null = criando novo)
-  contextoForm: 'Comida', // tipo de cena selecionado no painel
+  contextoForm: 'Personalizado', // tipo de cena selecionado no painel
 };
 
 // Atalhos: pegar elemento por id e escrever "1 preset" / "2 presets"
@@ -113,6 +80,9 @@ const formatarExposicao = (v) => (v > 0 ? `+${v}` : `${v}`) + ' EV';
 
 // Atualiza o cabeçalho (contagem) e o card do Context Mode
 function renderResumo() {
+  // Grava a cada mudança: a câmera lê os mesmos presets e o mesmo Context Mode
+  JoviStore.salvarPresets(state.presets);
+  JoviStore.salvarContexto(state.contextoAtivo);
   const ativos = state.presets.filter((p) => p.ativo).length;
   $('modes-count').textContent = `${plural(state.presets.length, 'preset')} · ${plural(ativos, 'ativo')}`;
   $('context-toggle').checked = state.contextoAtivo;
@@ -154,9 +124,32 @@ function renderLista() {
   lucide.createIcons();
 }
 
+// A câmera (index.html) lê os presets desta chave para mostrá-los na escolha de preset.
+// sessionStorage é JavaScript puro do navegador e vale só enquanto a aba estiver aberta.
+const CHAVE_PRESETS = 'jovi_presets';
+
+function guardarPresets() {
+  try {
+    sessionStorage.setItem(CHAVE_PRESETS, JSON.stringify(state.presets));
+  } catch (e) {
+    /* sessionStorage bloqueado: a tela funciona, só não chega à câmera */
+  }
+}
+
+// Ao abrir a página, retoma a lista da sessão (se já houve mudanças) em vez dos exemplos
+function carregarPresets() {
+  try {
+    const salvos = JSON.parse(sessionStorage.getItem(CHAVE_PRESETS));
+    if (Array.isArray(salvos)) state.presets = salvos;
+  } catch (e) {
+    /* sem dados salvos: fica com os presets de exemplo */
+  }
+}
+
 function render() {
   renderResumo();
   renderLista();
+  guardarPresets();
 }
 
 /* ---------- Painel de criação / edição ---------- */
@@ -171,7 +164,7 @@ function renderContextos() {
                 ativo ? 'bg-amber-400 text-black font-semibold' : 'bg-neutral-800 text-neutral-300'
               }">
         <i data-lucide="${c.icone}" class="w-5 h-5"></i>
-        <span class="truncate max-w-full px-0.5">${nome === 'Personalizado' ? 'Outro' : nome}</span>
+        <span class="truncate max-w-full px-0.5">${nome === 'Personalizado' ? 'Pessoal' : nome}</span>
       </button>`;
   }).join('');
   lucide.createIcons();
@@ -226,7 +219,7 @@ function abrirPainel(id) {
 
   preencherFormulario(existente || {
     nome: '',
-    contexto: 'Comida',
+    contexto: 'Personalizado', // preset novo nasce pessoal; o tipo de cena é opcional
     gatilhos: {
       local: { ativo: false, texto: '' },
       horario: { ativo: false, de: '08:00', ate: '18:00' },
@@ -311,6 +304,8 @@ function toast(msg) {
 // Liga os eventos. A lista usa "delegação": um único listener no container,
 // pois os cards são recriados a cada render.
 function init() {
+  carregarPresets(); // retoma os presets da sessão, se já houve criação ou edição
+
   $('btn-new').addEventListener('click', () => abrirPainel(null));
 
   $('list').addEventListener('click', (e) => {
@@ -322,7 +317,7 @@ function init() {
     const chk = e.target.closest('[data-toggle]');
     if (!chk) return;
     const p = state.presets.find((x) => x.id === chk.dataset.toggle);
-    if (p) { p.ativo = chk.checked; renderResumo(); }
+    if (p) { p.ativo = chk.checked; renderResumo(); guardarPresets(); }
   });
 
   $('context-toggle').addEventListener('change', (e) => {
