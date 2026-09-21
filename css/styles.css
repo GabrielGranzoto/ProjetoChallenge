@@ -2,16 +2,15 @@
    CAMERA APP - MOBILE FIRST STYLES
    ========================================================================== */
 
-/* Cores da IA (Cam Assist, Context Mode, chip de preset).
+/* Cor da IA (Cam Assist, Context Mode, chip de preset): um violeta só, sólido.
    O âmbar fica só para o estado da câmera (modo ativo, obturador, foco). */
 :root {
-  --ai-from: #7c3aed; /* violeta */
-  --ai-to: #d112b3;   /* magenta */
+  --ai: #7c3aed; /* violeta */
 }
 
-/* Fundo em degradê usado em tudo que é "IA" */
-.ai-gradient {
-  background-image: linear-gradient(135deg, var(--ai-from), var(--ai-to));
+/* Fundo sólido usado em tudo que é "IA" (botão Aplicar, ícone do card, aviso ON) */
+.ai-bg {
+  background-color: var(--ai);
 }
 
 /* Esconde a barra de rolagem mantendo a funcionalidade de scroll */
@@ -24,6 +23,13 @@
   display: none;             /* Chrome, Safari e Opera */
 }
 
+/* Bordas da barra de modos esmaecem: quando as abas passam da largura da tela,
+   o corte parece intencional (indica que dá para rolar) e não um texto quebrado */
+.tabs-fade {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+}
+
 /* Animação do Obturador ao Clicar/Tocar */
 #btn-shutter:active span {
   transform: scale(0.9);
@@ -32,6 +38,7 @@
 
 /* Transição suave para troca de modos */
 .mode-tab {
+  padding: 0.5rem 0.375rem; /* área de toque de cerca de 36 px de altura; espaço lateral enxuto */
   transition: color 0.2s ease, font-weight 0.2s ease;
 }
 
@@ -85,6 +92,27 @@
   animation: focus-pulse 1s ease-out both;
 }
 
+/* ==========================================================================
+   ACESSIBILIDADE
+   ========================================================================== */
+
+/* Contorno visível ao navegar pelo teclado (não aparece ao tocar/clicar) */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #fbbf24; /* amber-400 */
+  outline-offset: 2px;
+}
+
+/* Quem pede menos movimento no sistema não vê as animações */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Classe ativa para o modo selecionado */
 .mode-tab.active {
   color: #fbbf24; /* Tailwind amber-400 */
@@ -93,7 +121,7 @@
 
 /* Botão de IA ligado (Context Mode) */
 #btn-ai.ai-on {
-  background-image: linear-gradient(135deg, var(--ai-from), var(--ai-to));
+  background-color: var(--ai);
   border-color: transparent;
 }
 

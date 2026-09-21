@@ -176,7 +176,7 @@ function atualizarContext() {
   $('badge-preset').classList.toggle('hidden', !ligado);
   $('badge-preset').classList.toggle('flex', ligado);
 
-  // Botão IA fica com o degradê da IA quando ligado (classe .ai-on em css/styles.css)
+  // Botão IA fica violeta quando ligado (classe .ai-on em css/styles.css)
   $('btn-ai').classList.toggle('ai-on', ligado);
   marcarBotao($('btn-ai'), ligado);
 
@@ -203,7 +203,7 @@ function mostrarBadgeContext() {
   badge.className =
     'flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold ' +
     (ligado
-      ? 'ai-gradient text-white border-transparent'
+      ? 'ai-bg text-white border-transparent'
       : 'bg-black/60 text-neutral-200 border-white/20');
   $('badge-context-dot').className =
     'w-2 h-2 rounded-full ' + (ligado ? 'bg-white animate-pulse' : 'bg-neutral-400');
