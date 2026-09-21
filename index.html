@@ -2,8 +2,8 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-  <title>Camera App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>JOVI Câmera</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +14,7 @@
   <!-- Arquivo de Estilos Externo -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-black text-white antialiased select-none overflow-hidden">
+<body class="bg-black text-white antialiased select-none overflow-hidden touch-manipulation">
   
   <!-- Viewfinder (Container Principal Mobile First) -->
   <div class="relative w-full h-dvh max-w-md mx-auto overflow-hidden bg-black flex flex-col justify-between">
@@ -22,7 +22,11 @@
     <!-- ÁREA DA CÂMERA (VIEWFINDER) -->
     <div class="relative flex-1 w-full overflow-hidden bg-neutral-900 rounded-b-3xl">
       
-      <!-- Video Stream -->
+      <!-- Cena simulada: foto de images/ que faz o papel da câmera enquanto não há stream real.
+           O botão de cena (abaixo) troca a foto e o Cam Assist reage a ela (js/camera.js). -->
+      <img id="scene-img" src="images/paisagem-1.jpg" alt="" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none">
+
+      <!-- Video Stream (fica por cima da cena; transparente enquanto não houver câmera) -->
       <video id="camera-feed" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline muted></video>
 
       <!-- Grid 3x3 (oculta por padrão) -->
@@ -35,41 +39,111 @@
 
       <!-- Barra Superior de Ações -->
       <div class="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-4 pb-6 bg-gradient-to-b from-black/60 to-transparent z-10">
-        <button id="btn-hdr" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md text-[11px] font-bold active:scale-95 transition flex items-center justify-center">HDR</button>
+        <button id="btn-hdr" aria-label="HDR" aria-pressed="false" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md text-[11px] font-bold active:scale-95 transition flex items-center justify-center">HDR</button>
         
-        <button id="btn-edit" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
-          <i data-lucide="wand-2" class="w-5 h-5 text-white"></i>
-        </button>
-        
-        <button id="btn-flash" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
+        <!-- Alta resolução 200MP: recurso que ficava escondido em submenus, agora a um toque -->
+        <button id="btn-res" aria-label="Alta resolução 200MP" aria-pressed="false" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-bold active:scale-95 transition flex items-center justify-center">200MP</button>
+
+        <button id="btn-flash" aria-label="Flash" aria-pressed="false" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
           <i data-lucide="zap-off" class="w-5 h-5"></i>
         </button>
-        
-        <button id="btn-grid" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
-          <i data-lucide="grid" class="w-5 h-5"></i>
+
+        <!-- Aura Light: antes ficava numa subopção do flash -->
+        <button id="btn-aura" aria-label="Aura Light" aria-pressed="false" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
+          <i data-lucide="sun" class="w-5 h-5"></i>
         </button>
-        
-        <button id="btn-scan" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
-          <i data-lucide="scan" class="w-5 h-5"></i>
+
+        <button id="btn-grid" aria-label="Grade" aria-pressed="false" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
+          <i data-lucide="grid" class="w-5 h-5"></i>
         </button>
       </div>
 
-      <!-- PAINEL DE SUGESTÕES DE IA -->
-      <div id="ai-suggestion-panel" class="absolute top-16 left-4 right-4 z-20 flex flex-col gap-3">
-        
-        <!-- Card: Paisagem Detectada (Cores e textos exatos) -->
-        <div id="ai-suggestion-card" class="bg-black/70 backdrop-blur-lg border border-white/5 rounded-3xl p-4 flex items-center gap-4 shadow-xl">
-          <div class="w-10 h-10 rounded-xl bg-magenta-600 flex items-center justify-center shrink-0" style="background-color: #d112b3;">
-            <i data-lucide="lightbulb" class="w-6 h-6 text-white"></i>
+      <!-- PAINEL DE SUGESTÕES DO CAM ASSIST
+           O texto muda conforme a cena detectada (SUGESTOES em js/camera.js).
+           Começa escondido: o JS mostra quando houver uma sugestão pendente. -->
+      <div id="ai-suggestion-panel" class="hidden absolute top-16 left-4 right-4 z-20 flex flex-col gap-3">
+
+        <div id="ai-suggestion-card" class="bg-black/70 backdrop-blur-lg border border-white/5 rounded-3xl p-4 flex flex-col gap-3 shadow-xl">
+          <div class="flex items-center gap-4">
+            <div class="ai-gradient w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
+              <i data-lucide="lightbulb" class="w-6 h-6 text-white"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h4 id="ai-card-titulo" class="text-xs font-bold text-white tracking-wide"></h4>
+              <p id="ai-card-recomendacao" class="text-[11px] font-semibold leading-tight mt-0.5 text-fuchsia-300"></p>
+              <p id="ai-card-texto" class="text-[10px] text-neutral-300 leading-tight mt-1.5"></p>
+            </div>
+            <!-- Dispensa a sugestão (js/camera.js) -->
+            <button id="btn-dismiss-ai" aria-label="Dispensar sugestão" class="self-start -mt-1 -mr-1 w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-neutral-400 active:bg-white/10 transition">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
           </div>
-          <div class="flex-1 min-w-0">
-            <h4 class="text-xs font-bold text-white tracking-wide">Paisagem Detectada</h4>
-            <p class="text-[11px] font-semibold leading-tight mt-0.5" style="color: #ff99f1;">Modo HDR recomendado</p>
-            <p class="text-[10px] text-neutral-300 leading-tight mt-1.5">Ative HDR para capturar mais detalhes em áreas claras e escuras</p>
+
+          <!-- Aplicar: ativa a sugestão com um toque. Sempre: aplica sozinho nas próximas vezes. -->
+          <div class="flex gap-2">
+            <button id="btn-apply-ai" class="ai-gradient flex-1 rounded-full py-2 text-xs font-semibold text-white active:scale-95 transition">Aplicar</button>
+            <button id="btn-always-ai" class="flex-1 rounded-full border border-white/20 py-2 text-xs font-semibold text-neutral-200 active:bg-white/10 transition">Sempre aplicar</button>
           </div>
         </div>
 
       </div>
+
+      <!-- BADGES DO JOVI MODES (controlados por js/camera.js) -->
+      <div class="absolute bottom-4 inset-x-4 z-10 flex flex-col items-center gap-2 pointer-events-none">
+
+        <!-- Tempo de gravação (só aparece gravando vídeo) -->
+        <div id="badge-rec" class="hidden items-center gap-2 rounded-full bg-red-600/90 px-3 py-1 text-xs font-bold tabular-nums">
+          <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+          <span id="badge-rec-tempo">00:00</span>
+        </div>
+
+        <!-- Preset ativo (só aparece com o Context Mode ligado). Tocar abre a lista de presets. -->
+        <button id="badge-preset" aria-label="Escolher preset" class="hidden pointer-events-auto items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 px-3.5 py-1.5 text-xs font-semibold active:scale-95 transition">
+          <i data-lucide="layers" class="w-3.5 h-3.5 text-fuchsia-300"></i>
+          <span id="badge-preset-nome">Preset: Paisagem</span>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-neutral-400"></i>
+        </button>
+
+        <!-- Aviso passageiro do Context Mode (aparece ~2s ao ligar/desligar): cinza = OFF, degradê da IA = ON -->
+        <div id="badge-context" class="hidden items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold bg-black/60 text-neutral-200 border-white/20">
+          <span id="badge-context-dot" class="w-2 h-2 rounded-full bg-neutral-400"></span>
+          <span id="badge-context-texto">Context Mode: OFF</span>
+        </div>
+
+        <!-- Linha de controles do visor: cena simulada | zoom | Context Mode (IA) -->
+        <div class="relative w-full flex items-center justify-center">
+          <!-- Troca a cena simulada (Paisagem, Noite, Retrato, Comida). O ícone mostra a cena atual. -->
+          <button id="btn-scene" aria-label="Trocar cena simulada" class="pointer-events-auto absolute left-0 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition">
+            <i data-lucide="mountain" class="w-5 h-5 text-white"></i>
+          </button>
+
+          <!-- Zoom: um botão por nível; o ativo fica em âmbar (js/camera.js) -->
+          <div id="zoom-pill" class="pointer-events-auto flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 p-1">
+            <button data-zoom="1" class="zoom-opt w-10 h-9 rounded-full text-xs font-bold transition">1x</button>
+            <button data-zoom="2" class="zoom-opt w-10 h-9 rounded-full text-xs font-bold transition">2</button>
+            <button data-zoom="5" class="zoom-opt w-10 h-9 rounded-full text-xs font-bold transition">5</button>
+          </div>
+
+          <!-- Context Mode (JOVI Modes): liga/desliga a IA -->
+          <button id="btn-ai" aria-label="Context Mode" aria-pressed="false" class="pointer-events-auto absolute right-0 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition">
+            <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Clarão do obturador -->
+      <div id="shutter-flash" class="absolute inset-0 z-30 bg-white opacity-0 pointer-events-none transition-opacity duration-200"></div>
+
+      <!-- Anel de foco (posicionado por js/camera.js ao tocar no visor) -->
+      <div id="focus-ring" class="absolute w-16 h-16 rounded-xl border-2 border-amber-400 opacity-0 pointer-events-none z-20"></div>
+
+      <!-- Contagem regressiva do temporizador (3, 2, 1) -->
+      <div id="countdown" aria-live="assertive" class="hidden absolute inset-0 z-30 items-center justify-center bg-black/30 pointer-events-none">
+        <span id="countdown-num" class="text-8xl font-light text-white drop-shadow-lg"></span>
+      </div>
+
+      <!-- Aviso rápido no centro do visor ("HDR ligado", "Foto salva"...) -->
+      <div id="cam-toast" role="status" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 rounded-full bg-black/60 backdrop-blur-md px-4 py-2 text-sm font-medium whitespace-nowrap opacity-0 transition-opacity duration-200 pointer-events-none"></div>
 
     </div>
 
@@ -77,42 +151,36 @@
     <div class="flex flex-col bg-black pt-3 pb-4">
       
       <!-- Controles de Disparo (Galeria, Obturador, Flip, etc) -->
-      <div class="flex items-center justify-around px-4 my-2">
-        
-        <!-- Galeria -->
-        <button id="btn-gallery" class="w-12 h-12 rounded-2xl overflow-hidden bg-neutral-800 border border-neutral-700 flex items-center justify-center active:scale-90 transition">
-          <i data-lucide="image" class="w-6 h-6 text-neutral-400"></i>
-        </button>
+      <div class="flex items-center justify-between px-8 my-2">
 
-        <!-- Ícone da IA -->
-        <button id="btn-ai" class="w-10 h-10 rounded-full bg-neutral-900 flex items-center justify-center active:scale-90 transition">
-          <i data-lucide="sparkles" class="w-5 h-5 text-amber-400"></i>
+        <!-- Galeria -->
+        <!-- Mostra a miniatura da última foto; se o arquivo não existir, o ícone aparece -->
+        <button id="btn-gallery" aria-label="Abrir galeria" class="relative w-12 h-12 rounded-2xl overflow-hidden bg-neutral-800 border border-neutral-700 flex items-center justify-center active:scale-90 transition">
+          <i data-lucide="image" class="w-6 h-6 text-neutral-400"></i>
+          <img src="images/comida-1.jpg" alt="" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()">
         </button>
 
         <!-- Obturador (Shutter) -->
-        <button id="btn-shutter" class="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center active:scale-90 transition p-0.5 shrink-0">
+        <button id="btn-shutter" aria-label="Tirar foto" class="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center active:scale-90 transition p-0.5 shrink-0">
           <span class="w-full h-full rounded-full bg-white ring-4 ring-amber-400"></span>
         </button>
 
-        <!-- Zoom -->
-        <button id="btn-zoom" class="w-10 h-10 rounded-full bg-neutral-900 text-amber-400 font-bold text-xs flex items-center justify-center active:scale-90 transition">
-          1x
-        </button>
-
         <!-- Inverter Câmera -->
-        <button id="btn-flip" class="w-12 h-12 rounded-2xl bg-neutral-800 flex items-center justify-center active:scale-90 transition">
+        <button id="btn-flip" aria-label="Inverter câmera" class="w-12 h-12 rounded-2xl bg-neutral-800 flex items-center justify-center active:scale-90 transition">
           <i data-lucide="switch-camera" class="w-6 h-6 text-white"></i>
         </button>
       </div>
 
       <!-- Barra de Modos de Câmera (Scroll Horizontal) -->
       <div class="flex items-center gap-2 px-3 mt-2">
-        <button id="btn-settings" class="w-9 h-9 rounded-full bg-neutral-800 text-white flex items-center justify-center shrink-0 active:scale-90 transition">
+        <button id="btn-settings" aria-label="Configurações de modos" class="w-11 h-11 rounded-full bg-neutral-800 text-white flex items-center justify-center shrink-0 active:scale-90 transition">
           <i data-lucide="sliders" class="w-4 h-4"></i>
         </button>
 
-        <div class="relative flex-1 overflow-x-auto modes-scroll py-1">
-          <div class="relative flex items-center justify-center gap-6 px-4 text-sm font-medium whitespace-nowrap text-neutral-400">
+        <!-- min-w-0 deixa a barra encolher em vez de invadir o botão dos 3 pontos.
+             w-max mx-auto centraliza as abas quando cabem e permite rolar quando não cabem. -->
+        <div class="relative flex-1 min-w-0 overflow-x-auto modes-scroll py-1">
+          <div class="relative flex w-max mx-auto items-center gap-4 px-2 text-sm font-medium whitespace-nowrap text-neutral-400">
             <button class="mode-tab hover:text-white" data-mode="Noite">Noite</button>
             <button class="mode-tab hover:text-white" data-mode="Retrato">Retrato</button>
             <button class="mode-tab active" data-mode="Foto">Foto</button>
@@ -121,13 +189,89 @@
           </div>
         </div>
 
-        <button id="btn-more" class="w-9 h-9 rounded-full bg-neutral-800 text-white flex items-center justify-center shrink-0 active:scale-90 transition">
+        <button id="btn-more" aria-label="Mais opções" class="w-11 h-11 rounded-full bg-neutral-800 text-white flex items-center justify-center shrink-0 active:scale-90 transition">
           <i data-lucide="more-horizontal" class="w-4 h-4"></i>
         </button>
       </div>
 
     </div>
 
+  </div>
+
+  <!-- LISTA DE PRESETS (abre ao tocar no chip "Preset: ..." do visor) -->
+  <div id="preset-sheet" class="hidden fixed inset-0 z-40">
+    <div id="preset-overlay" class="absolute inset-0 bg-black/70"></div>
+
+    <div class="sheet-in absolute bottom-0 inset-x-0 mx-auto w-full max-w-md rounded-t-2xl bg-neutral-900"
+         style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem)">
+      <div class="flex items-center justify-between px-4 pt-4 pb-2">
+        <h2 class="text-base font-semibold">Escolher preset</h2>
+        <button id="preset-close" aria-label="Fechar" class="w-10 h-10 -mr-2 rounded-full flex items-center justify-center text-neutral-300 active:bg-neutral-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="preset-list" class="px-2"></div>
+
+      <a href="pages/modes.html" class="mx-4 mt-2 flex items-center justify-center gap-2 rounded-full border border-neutral-700 py-2.5 text-sm font-medium text-neutral-200 active:bg-neutral-800 transition">
+        <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>Gerenciar presets
+      </a>
+    </div>
+  </div>
+
+  <!-- MENU "MAIS OPÇÕES" (botão dos 3 pontos) -->
+  <div id="more-sheet" class="hidden fixed inset-0 z-40">
+    <div id="more-overlay" class="absolute inset-0 bg-black/70"></div>
+
+    <div class="sheet-in absolute bottom-0 inset-x-0 mx-auto w-full max-w-md rounded-t-2xl bg-neutral-900"
+         style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem)">
+      <div class="flex items-center justify-between px-4 pt-4 pb-2">
+        <h2 class="text-base font-semibold">Mais opções</h2>
+        <button id="more-close" aria-label="Fechar" class="w-10 h-10 -mr-2 rounded-full flex items-center justify-center text-neutral-300 active:bg-neutral-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="px-2">
+        <!-- Temporizador: cada toque alterna Desligado -> 3 s -> 10 s -->
+        <button id="opt-timer" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left active:bg-neutral-800 transition">
+          <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+            <i data-lucide="timer" class="w-5 h-5 text-neutral-300"></i>
+          </span>
+          <span class="flex-1 text-sm font-medium">Temporizador</span>
+          <span id="opt-timer-valor" class="text-sm text-neutral-400">Desligado</span>
+        </button>
+
+        <!-- Simular cenários: liga a foto de cena no visor e o Cam Assist reagindo a ela.
+             Serve para testar as sugestões da IA sem depender de uma câmera de verdade. -->
+        <button id="opt-sim" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left active:bg-neutral-800 transition">
+          <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+            <i data-lucide="flask-conical" class="w-5 h-5 text-neutral-300"></i>
+          </span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-sm font-medium">Simular cenários</span>
+            <span class="block text-xs text-neutral-400">Testa o Cam Assist com cenas de exemplo</span>
+          </span>
+          <span id="opt-sim-valor" class="text-sm text-neutral-400">Desligado</span>
+        </button>
+
+        <a href="pages/gallery.html" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 active:bg-neutral-800 transition">
+          <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+            <i data-lucide="images" class="w-5 h-5 text-neutral-300"></i>
+          </span>
+          <span class="flex-1 text-sm font-medium">Galeria</span>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-neutral-500"></i>
+        </a>
+
+        <a href="pages/modes.html" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 active:bg-neutral-800 transition">
+          <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+            <i data-lucide="layers" class="w-5 h-5 text-neutral-300"></i>
+          </span>
+          <span class="flex-1 text-sm font-medium">JOVI Modes</span>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-neutral-500"></i>
+        </a>
+      </div>
+    </div>
   </div>
 
   <!-- Inicializar Ícones Lucide -->
@@ -137,5 +281,8 @@
       window.location.href = 'pages/gallery.html';
     });
   </script>
+
+  <!-- Interações da câmera (HDR, flash, grade, zoom, modos, Context Mode, obturador) -->
+  <script src="js/camera.js"></script>
 </body>
 </html>
