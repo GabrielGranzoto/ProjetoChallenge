@@ -2,19 +2,22 @@
    CAMERA APP - MOBILE FIRST STYLES
    ========================================================================== */
 
-/* Cores da IA (Cam Assist, Context Mode, chip de preset).
+/* Cor da IA (Cam Assist, Context Mode, chip de preset): um violeta só, sólido.
    O âmbar fica só para o estado da câmera (modo ativo, obturador, foco). */
 :root {
-  --acento: #fbbf24;  /* âmbar: única cor de destaque do app */
+  --ai: #7c3aed;        /* violeta: única cor da IA */
+  --acento: var(--ai);  /* alias: o código vindo da branch enzo usa este nome */
 }
 
-/* Elementos de "IA" (Cam Assist, Context Mode): sólidos na cor de destaque */
-.ai-gradient {
-  background: var(--acento);
-  color: #0a0a0a !important;
+/* Fundo sólido usado em tudo que é "IA" (Cam Assist, Context Mode, botão Aplicar).
+   Os dois nomes existem porque a branch enzo usa .ai-gradient e a style usa .ai-bg. */
+.ai-gradient,
+.ai-bg {
+  background: var(--ai);
+  color: #fff;
 }
-.ai-gradient i,
-.ai-gradient svg { color: #0a0a0a !important; }
+.ai-gradient i, .ai-gradient svg,
+.ai-bg i, .ai-bg svg { color: #fff !important; }
 
 /* Esconde a barra de rolagem mantendo a funcionalidade de scroll */
 .modes-scroll {
@@ -26,6 +29,13 @@
   display: none;             /* Chrome, Safari e Opera */
 }
 
+/* Bordas da barra de modos esmaecem: quando as abas passam da largura da tela,
+   o corte parece intencional (indica que dá para rolar) e não um texto quebrado */
+.tabs-fade {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+}
+
 /* Animação do Obturador ao Clicar/Tocar */
 #btn-shutter:active span {
   transform: scale(0.9);
@@ -34,6 +44,7 @@
 
 /* Transição suave para troca de modos */
 .mode-tab {
+  padding: 0.5rem 0.375rem; /* área de toque de cerca de 36 px de altura; espaço lateral enxuto */
   transition: color 0.2s ease, font-weight 0.2s ease;
 }
 
@@ -75,6 +86,24 @@
    TELA DA CÂMERA
    ========================================================================== */
 
+/* Aura Light: luz quente nas bordas de cima e de baixo, como um anel de luz */
+.aura-glow {
+  background:
+    radial-gradient(ellipse 90% 45% at 50% 0%, rgba(255, 236, 200, 0.55), transparent 70%),
+    radial-gradient(ellipse 90% 40% at 50% 100%, rgba(255, 236, 200, 0.4), transparent 70%);
+}
+
+/* Miniatura da galeria dá um pulinho quando a foto é tirada */
+@keyframes thumb-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.thumb-pop {
+  animation: thumb-pop 0.35s ease-out;
+}
+
 /* Anel de foco que aparece onde o usuário toca no visor */
 @keyframes focus-pulse {
   0%   { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
@@ -87,6 +116,27 @@
   animation: focus-pulse 1s ease-out both;
 }
 
+/* ==========================================================================
+   ACESSIBILIDADE
+   ========================================================================== */
+
+/* Contorno visível ao navegar pelo teclado (não aparece ao tocar/clicar) */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #fbbf24; /* amber-400 */
+  outline-offset: 2px;
+}
+
+/* Quem pede menos movimento no sistema não vê as animações */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Classe ativa para o modo selecionado */
 .mode-tab.active {
   color: #fbbf24; /* Tailwind amber-400 */
@@ -95,7 +145,7 @@
 
 /* Botão de IA ligado (Context Mode) */
 #btn-ai.ai-on {
-  background-image: linear-gradient(135deg, var(--ai-from), var(--ai-to));
+  background-color: var(--ai);
   border-color: transparent;
 }
 

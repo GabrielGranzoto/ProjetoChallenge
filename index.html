@@ -27,10 +27,27 @@
       
       <!-- Cena simulada: foto de images/ que faz o papel da câmera enquanto não há stream real.
            O botão de cena (abaixo) troca a foto e o Cam Assist reage a ela (js/camera.js). -->
-      <img id="scene-img" src="images/paisagem-1.jpg" alt="" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none">
+      <!-- Começa escondida (hidden): o simulador nasce desligado e só liga em
+           "Mais opções > Simular cenários". Sem o hidden aqui, a foto piscava no visor
+           até o JS carregar e escondê-la. -->
+      <img id="scene-img" src="images/paisagem-1.jpg" alt="" draggable="false" class="hidden absolute inset-0 w-full h-full object-cover pointer-events-none">
 
       <!-- Video Stream (fica por cima da cena; transparente enquanto não houver câmera) -->
       <video id="camera-feed" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline muted></video>
+
+      <!-- Aura Light: brilho suave nas bordas do visor (ligado pelo botão de sol, js/camera.js) -->
+      <div id="aura-overlay" class="aura-glow absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-500"></div>
+
+      <!-- Clarão do flash: ilumina a cena um instante antes da foto sair (js/camera.js) -->
+      <div id="flash-burst" class="absolute inset-0 z-20 pointer-events-none bg-white opacity-0 transition-opacity duration-100"></div>
+
+      <!-- Filtro de nitidez usado pelo 200MP (aplicado em js/camera.js). Não aparece na tela. -->
+      <svg class="absolute w-0 h-0" aria-hidden="true" focusable="false">
+        <!-- sRGB: sem isso o filtro trabalha em "linearRGB" e a imagem fica mais clara e lavada -->
+        <filter id="jovi-sharpen" color-interpolation-filters="sRGB">
+          <feConvolveMatrix order="3" kernelMatrix="0 -1 0 -1 5 -1 0 -1 0" preserveAlpha="true"/>
+        </filter>
+      </svg>
 
       <!-- Grid 3x3 (oculta por padrão) -->
       <div id="grid-overlay" class="absolute inset-0 pointer-events-none hidden">
@@ -45,21 +62,21 @@
 
       <!-- Barra Superior de Ações -->
       <div class="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-4 pb-6 bg-gradient-to-b from-black/60 to-transparent z-10">
-        <button id="btn-hdr" aria-label="HDR" aria-pressed="false" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md text-[11px] font-bold active:scale-95 transition flex items-center justify-center">HDR</button>
+        <button id="btn-hdr" aria-label="HDR" aria-pressed="false" class="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md text-[11px] font-bold active:scale-95 transition flex items-center justify-center">HDR</button>
         
         <!-- Alta resolução 200MP: recurso que ficava escondido em submenus, agora a um toque -->
-        <button id="btn-res" aria-label="Alta resolução 200MP" aria-pressed="false" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-bold active:scale-95 transition flex items-center justify-center">200MP</button>
+        <button id="btn-res" aria-label="Alta resolução 200MP" aria-pressed="false" class="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-bold active:scale-95 transition flex items-center justify-center">200MP</button>
 
-        <button id="btn-flash" aria-label="Flash" aria-pressed="false" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
+        <button id="btn-flash" aria-label="Flash" aria-pressed="false" class="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
           <i data-lucide="zap-off" class="w-5 h-5"></i>
         </button>
 
         <!-- Aura Light: antes ficava numa subopção do flash -->
-        <button id="btn-aura" aria-label="Aura Light" aria-pressed="false" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
+        <button id="btn-aura" aria-label="Aura Light" aria-pressed="false" class="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
           <i data-lucide="sun" class="w-5 h-5"></i>
         </button>
 
-        <button id="btn-grid" aria-label="Grade" aria-pressed="false" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
+        <button id="btn-grid" aria-label="Grade" aria-pressed="false" class="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md active:scale-95 transition flex items-center justify-center">
           <i data-lucide="grid" class="w-5 h-5"></i>
         </button>
       </div>
@@ -67,17 +84,17 @@
       <!-- PAINEL DE SUGESTÕES DO CAM ASSIST
            O texto muda conforme a cena detectada (SUGESTOES em js/camera.js).
            Começa escondido: o JS mostra quando houver uma sugestão pendente. -->
-      <div id="ai-suggestion-panel" class="hidden absolute top-16 left-4 right-4 z-20 flex flex-col gap-3">
+      <div id="ai-suggestion-panel" class="hidden absolute top-[4.75rem] left-4 right-4 z-20 flex flex-col gap-3">
 
         <div id="ai-suggestion-card" class="bg-black/70 backdrop-blur-lg border border-white/5 rounded-3xl p-4 flex flex-col gap-3 shadow-xl">
           <div class="flex items-center gap-4">
-            <div class="ai-gradient w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
+            <div class="ai-bg w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
               <i data-lucide="lightbulb" class="w-6 h-6 text-white"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <h4 id="ai-card-titulo" class="text-xs font-bold text-white tracking-wide"></h4>
-              <p id="ai-card-recomendacao" class="text-[11px] font-semibold leading-tight mt-0.5 text-fuchsia-300"></p>
-              <p id="ai-card-texto" class="text-[10px] text-neutral-300 leading-tight mt-1.5"></p>
+              <h4 id="ai-card-titulo" class="text-sm font-bold text-white"></h4>
+              <p id="ai-card-recomendacao" class="text-xs font-semibold leading-snug mt-0.5 text-violet-300"></p>
+              <p id="ai-card-texto" class="text-xs text-neutral-300 leading-snug mt-1"></p>
             </div>
             <!-- Dispensa a sugestão (js/camera.js) -->
             <button id="btn-dismiss-ai" aria-label="Dispensar sugestão" class="self-start -mt-1 -mr-1 w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-neutral-400 active:bg-white/10 transition">
@@ -87,8 +104,8 @@
 
           <!-- Aplicar: ativa a sugestão com um toque. Sempre: aplica sozinho nas próximas vezes. -->
           <div class="flex gap-2">
-            <button id="btn-apply-ai" class="ai-gradient flex-1 rounded-full py-2 text-xs font-semibold text-white active:scale-95 transition">Aplicar</button>
-            <button id="btn-always-ai" class="flex-1 rounded-full border border-white/20 py-2 text-xs font-semibold text-neutral-200 active:bg-white/10 transition">Sempre aplicar</button>
+            <button id="btn-apply-ai" class="ai-bg flex-1 rounded-full py-2.5 text-sm font-semibold text-white active:scale-95 transition">Aplicar</button>
+            <button id="btn-always-ai" class="flex-1 rounded-full border border-white/20 py-2.5 text-sm font-semibold text-neutral-200 active:bg-white/10 transition">Sempre aplicar</button>
           </div>
         </div>
 
@@ -105,6 +122,15 @@
           <i data-lucide="camera" class="w-3.5 h-3.5"></i>Usar minha câmera
         </button>
 
+        <!-- Modo Pro: valores que a câmera "calculou" para a cena (só aparece no modo Pro) -->
+        <div id="pro-strip" class="hidden items-center gap-3 rounded-full bg-black/60 backdrop-blur-md border border-white/10 px-4 py-1.5 text-[11px] font-medium tabular-nums">
+          <span class="text-neutral-400">ISO <span id="pro-iso" class="text-white">100</span></span>
+          <span class="w-px h-3 bg-white/20"></span>
+          <span class="text-neutral-400">VEL <span id="pro-vel" class="text-white">1/120</span></span>
+          <span class="w-px h-3 bg-white/20"></span>
+          <span class="text-neutral-400">EV <span id="pro-ev" class="text-white">0.0</span></span>
+        </div>
+
         <!-- Tempo de gravação (só aparece gravando vídeo) -->
         <div id="badge-rec" class="hidden items-center gap-2 rounded-full bg-red-600/90 px-3 py-1 text-xs font-bold tabular-nums">
           <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
@@ -113,7 +139,7 @@
 
         <!-- Preset ativo (só aparece com o Context Mode ligado). Tocar abre a lista de presets. -->
         <button id="badge-preset" aria-label="Escolher preset" class="hidden pointer-events-auto items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 px-3.5 py-1.5 text-xs font-semibold active:scale-95 transition">
-          <i data-lucide="layers" class="w-3.5 h-3.5 text-fuchsia-300"></i>
+          <i data-lucide="layers" class="w-3.5 h-3.5 text-violet-300"></i>
           <span id="badge-preset-nome">Preset: Paisagem</span>
           <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-neutral-400"></i>
         </button>
@@ -127,7 +153,7 @@
         <!-- Linha de controles do visor: cena simulada | zoom | Context Mode (IA) -->
         <div class="relative w-full flex items-center justify-center">
           <!-- Troca a cena simulada (Paisagem, Noite, Retrato, Comida). O ícone mostra a cena atual. -->
-          <button id="btn-scene" aria-label="Trocar cena simulada" class="pointer-events-auto absolute left-0 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition">
+          <button id="btn-scene" aria-label="Trocar cena simulada" class="hidden pointer-events-auto absolute left-0 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition">
             <i data-lucide="mountain" class="w-5 h-5 text-white"></i>
           </button>
 
@@ -180,7 +206,7 @@
         </button>
 
         <!-- Inverter Câmera -->
-        <button id="btn-flip" aria-label="Inverter câmera" class="w-12 h-12 rounded-2xl bg-neutral-800 flex items-center justify-center active:scale-90 transition">
+        <button id="btn-flip" aria-label="Inverter câmera" aria-pressed="false" class="w-12 h-12 rounded-2xl bg-neutral-800 flex items-center justify-center active:scale-90 transition">
           <i data-lucide="switch-camera" class="w-6 h-6 text-white"></i>
         </button>
       </div>
@@ -193,10 +219,14 @@
 
         <!-- min-w-0 deixa a barra encolher em vez de invadir o botão dos 3 pontos.
              w-max mx-auto centraliza as abas quando cabem e permite rolar quando não cabem. -->
-        <div class="relative flex-1 min-w-0 overflow-x-auto modes-scroll py-1">
-          <div class="relative flex w-max mx-auto items-center gap-4 px-2 text-sm font-medium whitespace-nowrap text-neutral-400">
+        <div class="relative flex-1 min-w-0 overflow-x-auto modes-scroll tabs-fade py-1">
+          <!-- Abas distribuídas de modo uniforme (justify-around). Em telas estreitas a fonte diminui
+               e o espaçamento vem do padding de cada aba (.mode-tab), então cabem a partir de ~360 px.
+               min-w-max evita esmagar as abas: se ainda assim não couberem, a barra rola. -->
+          <div class="relative flex w-full min-w-max items-center justify-around px-1 text-[13px] min-[390px]:text-sm font-medium whitespace-nowrap text-neutral-400">
             <button class="mode-tab hover:text-white" data-mode="Noite">Noite</button>
             <button class="mode-tab hover:text-white" data-mode="Retrato">Retrato</button>
+            <button class="mode-tab hover:text-white" data-mode="Comida">Comida</button>
             <button class="mode-tab active" data-mode="Foto">Foto</button>
             <button class="mode-tab hover:text-white" data-mode="Video">Vídeo</button>
             <button class="mode-tab hover:text-white" data-mode="Pro">Pro</button>
@@ -292,6 +322,15 @@
           </span>
         </button>
 
+        <!-- Som do obturador: o clique é gerado pelo próprio navegador (Web Audio), sem arquivo -->
+        <button id="opt-som" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left active:bg-neutral-800 transition">
+          <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+            <i data-lucide="volume-2" class="w-5 h-5 text-neutral-300"></i>
+          </span>
+          <span class="flex-1 text-sm font-medium">Som do obturador</span>
+          <span id="opt-som-valor" class="text-sm text-amber-400">Ligado</span>
+        </button>
+
         <a href="pages/gallery.html" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 active:bg-neutral-800 transition">
           <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
             <i data-lucide="images" class="w-5 h-5 text-neutral-300"></i>
@@ -324,6 +363,9 @@
   <!-- Memória compartilhada com a Galeria e o Modes (presets, aprendizado, fotos) -->
   <script src="js/store.js"></script>
   <script src="js/shell.js"></script>
+
+  <!-- Presets de exemplo, lidos pelo Modes e pelo Context Mode da câmera -->
+  <script src="js/presets-exemplo.js"></script>
 
   <!-- Interações da câmera (HDR, flash, grade, zoom, modos, Context Mode, obturador, câmera real) -->
   <script src="js/camera.js"></script>
