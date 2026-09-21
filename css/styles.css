@@ -80,6 +80,24 @@
    TELA DA CÂMERA
    ========================================================================== */
 
+/* Aura Light: luz quente nas bordas de cima e de baixo, como um anel de luz */
+.aura-glow {
+  background:
+    radial-gradient(ellipse 90% 45% at 50% 0%, rgba(255, 236, 200, 0.55), transparent 70%),
+    radial-gradient(ellipse 90% 40% at 50% 100%, rgba(255, 236, 200, 0.4), transparent 70%);
+}
+
+/* Miniatura da galeria dá um pulinho quando a foto é tirada */
+@keyframes thumb-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.thumb-pop {
+  animation: thumb-pop 0.35s ease-out;
+}
+
 /* Anel de foco que aparece onde o usuário toca no visor */
 @keyframes focus-pulse {
   0%   { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }

@@ -24,10 +24,27 @@
       
       <!-- Cena simulada: foto de images/ que faz o papel da câmera enquanto não há stream real.
            O botão de cena (abaixo) troca a foto e o Cam Assist reage a ela (js/camera.js). -->
-      <img id="scene-img" src="images/paisagem-1.jpg" alt="" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none">
+      <!-- Começa escondida (hidden): o simulador nasce desligado e só liga em
+           "Mais opções > Simular cenários". Sem o hidden aqui, a foto piscava no visor
+           até o JS carregar e escondê-la. -->
+      <img id="scene-img" src="images/paisagem-1.jpg" alt="" draggable="false" class="hidden absolute inset-0 w-full h-full object-cover pointer-events-none">
 
       <!-- Video Stream (fica por cima da cena; transparente enquanto não houver câmera) -->
       <video id="camera-feed" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline muted></video>
+
+      <!-- Aura Light: brilho suave nas bordas do visor (ligado pelo botão de sol, js/camera.js) -->
+      <div id="aura-overlay" class="aura-glow absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-500"></div>
+
+      <!-- Clarão do flash: ilumina a cena um instante antes da foto sair (js/camera.js) -->
+      <div id="flash-burst" class="absolute inset-0 z-20 pointer-events-none bg-white opacity-0 transition-opacity duration-100"></div>
+
+      <!-- Filtro de nitidez usado pelo 200MP (aplicado em js/camera.js). Não aparece na tela. -->
+      <svg class="absolute w-0 h-0" aria-hidden="true" focusable="false">
+        <!-- sRGB: sem isso o filtro trabalha em "linearRGB" e a imagem fica mais clara e lavada -->
+        <filter id="jovi-sharpen" color-interpolation-filters="sRGB">
+          <feConvolveMatrix order="3" kernelMatrix="0 -1 0 -1 5 -1 0 -1 0" preserveAlpha="true"/>
+        </filter>
+      </svg>
 
       <!-- Grid 3x3 (oculta por padrão) -->
       <div id="grid-overlay" class="absolute inset-0 pointer-events-none hidden">
@@ -91,6 +108,15 @@
       <!-- BADGES DO JOVI MODES (controlados por js/camera.js) -->
       <div class="absolute bottom-4 inset-x-4 z-10 flex flex-col items-center gap-2 pointer-events-none">
 
+        <!-- Modo Pro: valores que a câmera "calculou" para a cena (só aparece no modo Pro) -->
+        <div id="pro-strip" class="hidden items-center gap-3 rounded-full bg-black/60 backdrop-blur-md border border-white/10 px-4 py-1.5 text-[11px] font-medium tabular-nums">
+          <span class="text-neutral-400">ISO <span id="pro-iso" class="text-white">100</span></span>
+          <span class="w-px h-3 bg-white/20"></span>
+          <span class="text-neutral-400">VEL <span id="pro-vel" class="text-white">1/120</span></span>
+          <span class="w-px h-3 bg-white/20"></span>
+          <span class="text-neutral-400">EV <span id="pro-ev" class="text-white">0.0</span></span>
+        </div>
+
         <!-- Tempo de gravação (só aparece gravando vídeo) -->
         <div id="badge-rec" class="hidden items-center gap-2 rounded-full bg-red-600/90 px-3 py-1 text-xs font-bold tabular-nums">
           <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
@@ -113,7 +139,7 @@
         <!-- Linha de controles do visor: cena simulada | zoom | Context Mode (IA) -->
         <div class="relative w-full flex items-center justify-center">
           <!-- Troca a cena simulada (Paisagem, Noite, Retrato, Comida). O ícone mostra a cena atual. -->
-          <button id="btn-scene" aria-label="Trocar cena simulada" class="pointer-events-auto absolute left-0 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition">
+          <button id="btn-scene" aria-label="Trocar cena simulada" class="hidden pointer-events-auto absolute left-0 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition">
             <i data-lucide="mountain" class="w-5 h-5 text-white"></i>
           </button>
 
@@ -157,7 +183,7 @@
         <!-- Mostra a miniatura da última foto; se o arquivo não existir, o ícone aparece -->
         <button id="btn-gallery" aria-label="Abrir galeria" class="relative w-12 h-12 rounded-2xl overflow-hidden bg-neutral-800 border border-neutral-700 flex items-center justify-center active:scale-90 transition">
           <i data-lucide="image" class="w-6 h-6 text-neutral-400"></i>
-          <img src="images/comida-1.jpg" alt="" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()">
+          <img id="gallery-thumb" src="images/comida-1.jpg" alt="" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()">
         </button>
 
         <!-- Obturador (Shutter) -->
@@ -166,7 +192,7 @@
         </button>
 
         <!-- Inverter Câmera -->
-        <button id="btn-flip" aria-label="Inverter câmera" class="w-12 h-12 rounded-2xl bg-neutral-800 flex items-center justify-center active:scale-90 transition">
+        <button id="btn-flip" aria-label="Inverter câmera" aria-pressed="false" class="w-12 h-12 rounded-2xl bg-neutral-800 flex items-center justify-center active:scale-90 transition">
           <i data-lucide="switch-camera" class="w-6 h-6 text-white"></i>
         </button>
       </div>
@@ -186,6 +212,7 @@
           <div class="relative flex w-full min-w-max items-center justify-around px-1 text-[13px] min-[390px]:text-sm font-medium whitespace-nowrap text-neutral-400">
             <button class="mode-tab hover:text-white" data-mode="Noite">Noite</button>
             <button class="mode-tab hover:text-white" data-mode="Retrato">Retrato</button>
+            <button class="mode-tab hover:text-white" data-mode="Comida">Comida</button>
             <button class="mode-tab active" data-mode="Foto">Foto</button>
             <button class="mode-tab hover:text-white" data-mode="Video">Vídeo</button>
             <button class="mode-tab hover:text-white" data-mode="Pro">Pro</button>
@@ -258,6 +285,15 @@
           <span id="opt-sim-valor" class="text-sm text-neutral-400">Desligado</span>
         </button>
 
+        <!-- Som do obturador: o clique é gerado pelo próprio navegador (Web Audio), sem arquivo -->
+        <button id="opt-som" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left active:bg-neutral-800 transition">
+          <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+            <i data-lucide="volume-2" class="w-5 h-5 text-neutral-300"></i>
+          </span>
+          <span class="flex-1 text-sm font-medium">Som do obturador</span>
+          <span id="opt-som-valor" class="text-sm text-amber-400">Ligado</span>
+        </button>
+
         <a href="pages/gallery.html" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 active:bg-neutral-800 transition">
           <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
             <i data-lucide="images" class="w-5 h-5 text-neutral-300"></i>
@@ -286,6 +322,7 @@
   </script>
 
   <!-- Interações da câmera (HDR, flash, grade, zoom, modos, Context Mode, obturador) -->
+  <script src="js/presets-exemplo.js"></script>
   <script src="js/camera.js"></script>
 </body>
 </html>
