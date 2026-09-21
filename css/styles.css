@@ -5,14 +5,16 @@
 /* Cores da IA (Cam Assist, Context Mode, chip de preset).
    O âmbar fica só para o estado da câmera (modo ativo, obturador, foco). */
 :root {
-  --ai-from: #7c3aed; /* violeta */
-  --ai-to: #d112b3;   /* magenta */
+  --acento: #fbbf24;  /* âmbar: única cor de destaque do app */
 }
 
-/* Fundo em degradê usado em tudo que é "IA" */
+/* Elementos de "IA" (Cam Assist, Context Mode): sólidos na cor de destaque */
 .ai-gradient {
-  background-image: linear-gradient(135deg, var(--ai-from), var(--ai-to));
+  background: var(--acento);
+  color: #0a0a0a !important;
 }
+.ai-gradient i,
+.ai-gradient svg { color: #0a0a0a !important; }
 
 /* Esconde a barra de rolagem mantendo a funcionalidade de scroll */
 .modes-scroll {
@@ -112,3 +114,329 @@
 .card-in {
   animation: card-in 0.25s ease-out both;
 }
+
+/* Linha de varredura enquanto a IA analisa a cena (dura o tempo da análise) */
+@keyframes varredura {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: translateY(420%); opacity: 0; }
+}
+
+.scan-line {
+  background: linear-gradient(to bottom, transparent, rgba(209, 18, 179, 0.35), transparent);
+  animation: varredura 0.9s ease-in-out infinite;
+}
+
+/* O filtro dos presets e o zoom mudam com transição suave */
+#camera-feed,
+#scene-img {
+  will-change: filter, transform;
+}
+
+/* Respeita quem prefere menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  .scan-line,
+  .card-in,
+  .sheet-in,
+  .viewer-in,
+  .focus-ring {
+    animation: none;
+  }
+
+  #camera-feed,
+  #scene-img {
+    transition: none !important;
+  }
+}
+
+/* ==========================================================================
+   LAYOUT RESPONSIVO
+   Celular: a tela inteira é o app.
+   Computador/tablet (>= 768px): o app vira um celular centralizado. Nas laterais
+   (>= 1100px) o js/shell.js coloca painéis de apoio (sobre o projeto e estado ao
+   vivo). O transform da moldura prende os elementos fixos (menu, painéis,
+   avisos) dentro dela.
+   ========================================================================== */
+@media (min-width: 768px) {
+  body {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    background: #0b0b0c;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shell {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(24px, 4vw, 64px);
+    width: 100%;
+    padding: 12px;
+  }
+
+  .device {
+    position: relative;
+    flex: none;
+    width: 430px;
+    max-width: 100%;
+    height: 880px; /* tamanho fixo de celular; o js/shell.js encolhe (zoom) em janelas menores */
+    transform: translateZ(0);
+    overflow: hidden;
+    border-radius: 34px;
+    background: #000;
+    box-shadow: 0 0 0 1px #2b2b2e, 0 24px 60px rgba(0, 0, 0, 0.55);
+  }
+
+  /* As páginas rolam dentro da moldura, não na janela */
+  .device > div:first-child {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .device > div:first-child::-webkit-scrollbar { display: none; }
+
+  .device .h-dvh { height: 100%; }
+  .device .min-h-dvh { min-height: 100%; }
+  .device .max-h-\[92dvh\] { max-height: 92%; }
+}
+
+
+/* Painéis laterais (só aparecem em telas largas) */
+.side { display: none; }
+
+@media (min-width: 1100px) {
+  .side {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 300px;
+    flex: none;
+    color: #e5e5e5;
+    animation: pagina-in 0.5s ease-out both;
+  }
+  .side-card {
+    border-radius: 14px;
+    padding: 18px;
+    background: #111112;
+    border: 1px solid #1e1e20;
+  }
+  .side h2 { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: #737373; margin-bottom: 8px; font-weight: 600; }
+  .side-eyebrow { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: #fbbf24; font-weight: 600; }
+  .side-brand { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; color: #fafafa; }
+  .side-brand span { color: #737373; font-weight: 500; }
+  .side p { font-size: 0.83rem; line-height: 1.5; color: #8a8a8e; }
+  .side-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; font-size: 0.85rem; }
+  .side-row + .side-row { border-top: 1px solid #1e1e20; }
+  .side-ico { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; flex: none; color: #737373; }
+  .side-link { transition: color 0.2s ease, padding 0.2s ease; }
+  .side-link:hover { padding-left: 6px; }
+  .side-link:hover .side-ico { color: #fafafa; }
+  .side-link.atual .side-ico { color: #fbbf24; }
+  .side-num { font-size: 1.6rem; font-weight: 600; line-height: 1; color: #fafafa; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .side-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #1e1e20; border-radius: 10px; overflow: hidden; }
+  .side-stat { padding: 14px; background: #111112; }
+  .side-stat small { display: block; margin-top: 6px; font-size: 0.7rem; color: #737373; }
+  kbd { font-family: inherit; font-size: 0.72rem; padding: 2px 7px; border-radius: 6px; background: #1a1a1c; color: #e5e5e5; border: 1px solid #2b2b2e; }
+}
+
+}
+
+/* ==========================================================================
+   DETALHES E FLUIDEZ
+   ========================================================================== */
+
+html { scroll-behavior: smooth; }
+
+/* Toda página entra com um fade curto */
+@keyframes pagina-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.device { animation: pagina-in 0.35s ease-out both; }
+
+/* Foco visível para quem usa teclado */
+:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* Botões do app respondem ao toque e ao mouse */
+button { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled) { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+/* Miniaturas da galeria: entram em cascata e reagem ao mouse */
+@keyframes tile-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+.tile-in {
+  animation: tile-in 0.32s ease-out both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+.tile-in:active { transform: scale(0.96); }
+@media (hover: hover) {
+  .tile-in:hover { filter: brightness(1.12); z-index: 1; }
+}
+
+/* Barra inferior: ícone e texto suavizam a troca de aba */
+nav a, nav button { transition: color 0.2s ease, transform 0.15s ease; }
+nav a:active { transform: scale(0.94); }
+
+/* Cards do Modes */
+#list > * { transition: transform 0.2s ease, background-color 0.2s ease; }
+@media (hover: hover) {
+  #list > *:hover { transform: translateY(-2px); }
+}
+
+/* Cartão de sugestão e chip da IA */
+#ia-chip { transition: opacity 0.25s ease, transform 0.25s ease; }
+#ai-suggestion-card { box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+
+/* Obturador: anel que "respira" enquanto a câmera está pronta e afunda ao tocar */
+#btn-shutter { transition: transform 0.15s ease; }
+#btn-shutter:active { transform: scale(0.92); }
+
+/* Miniatura da galeria dá um pulinho quando entra uma foto nova */
+@keyframes pop {
+  0%   { transform: scale(0.6); }
+  60%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+#gallery-thumb.pop { animation: pop 0.4s ease-out; }
+
+/* ---------- Visualizador ---------- */
+
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
+  z-index: 2;
+}
+.nav-arrow.left-2 { left: 0.5rem; }
+.nav-arrow.right-2 { right: 0.5rem; }
+.nav-arrow:hover { background: rgba(60, 60, 60, 0.8); }
+.nav-arrow:active { transform: translateY(-50%) scale(0.92); }
+/* Em telas com mouse mostra as setas; no toque, arrastar já resolve */
+@media (hover: hover) and (pointer: fine) { .nav-arrow { display: flex; } }
+.nav-arrow.invisible { visibility: hidden; }
+
+@keyframes desliza-direita {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes desliza-esquerda {
+  from { opacity: 0; transform: translateX(-28px); }
+  to   { opacity: 1; transform: none; }
+}
+.slide-from-right { animation: desliza-direita 0.28s ease-out both; }
+.slide-from-left  { animation: desliza-esquerda 0.28s ease-out both; }
+
+#viewer #panel-edit { display: none; }
+#viewer.editando #panel-edit { display: block; }
+#viewer.editando #panel-info { display: none; }
+#viewer.editando .nav-arrow { display: none; }
+
+/* Botão com gradiente da IA */
+/* Botão principal de IA: sólido, na cor de destaque do app */
+.ia-btn {
+  background: #fbbf24;
+  color: #0a0a0a;
+}
+.ia-btn:hover:not(:disabled) { background: #fcd34d; }
+
+/* Filtros e etiquetas do editor */
+.edit-chip {
+  padding: 0.4rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  background: #262626;
+  color: #d4d4d4;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.edit-chip:hover { background: #333; }
+.edit-chip:active { transform: scale(0.95); }
+.edit-chip.active { background: #fbbf24; color: #000; font-weight: 600; }
+
+.edit-tag {
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  background: #262626;
+  color: #d4d4d4;
+  animation: tile-in 0.3s ease-out both;
+}
+
+/* Sliders do editor */
+.edit-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  background: #3a3a3a;
+  outline-offset: 6px;
+}
+.edit-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fbbf24;
+  border: 0;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.18);
+  transition: box-shadow 0.15s ease;
+}
+.edit-range::-webkit-slider-thumb:hover,
+.edit-range:active::-webkit-slider-thumb { box-shadow: 0 0 0 7px rgba(251, 191, 36, 0.22); }
+.edit-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: #fbbf24;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .device, .tile-in, .slide-from-right, .slide-from-left, .edit-tag, #gallery-thumb.pop { animation: none; }
+}
+
+/* ==========================================================================
+   TEMA: uma cor de destaque (âmbar), superfícies neutras, sem brilhos
+   ========================================================================== */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { letter-spacing: -0.02em; }
+
+.text-fuchsia-300 { color: #fbbf24; }
+.text-pink-400 { color: #f87171; }
+
+/* Cartão de sugestão: superfície sólida, sem vidro nem brilho */
+#ai-suggestion-card {
+  background: rgba(12, 12, 13, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Botão flutuante de IA da câmera: neutro, com ícone na cor de destaque */
+#btn-ai-toggle { box-shadow: none; }

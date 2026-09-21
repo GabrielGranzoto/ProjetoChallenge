@@ -5,16 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>JOVI Modes</title>
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CSS: css/tailwind.css é a versão compilada (funciona offline).
+       O CDN abaixo só entra como reforço quando há internet e você criar classes novas. -->
+  <link rel="stylesheet" href="../css/tailwind.css">
+  <script async src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Ícones (SVG inline, arquivo do próprio projeto) -->
+  <script src="../js/icons.js"></script>
 
   <!-- Arquivo de Estilos Externo -->
   <link rel="stylesheet" href="../css/styles.css">
 </head>
 <body class="bg-black text-white antialiased select-none">
+  <div class="device">
 
   <div class="relative w-full min-h-dvh max-w-md mx-auto bg-black">
 
@@ -207,6 +210,10 @@
 
   </div>
 
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/shell.js"></script>
   <script src="../js/presets.js"></script>
 </body>
 </html>
