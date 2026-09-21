@@ -5,16 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>JOVI Câmera</title>
   
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Tailwind CSS: css/tailwind.css é a versão compilada (funciona offline).
+       O CDN abaixo só entra como reforço quando há internet e você criar classes novas. -->
+  <link rel="stylesheet" href="css/tailwind.css">
+  <script async src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Ícones (SVG inline, arquivo do próprio projeto) -->
+  <script src="js/icons.js"></script>
   
   <!-- Arquivo de Estilos Externo -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-black text-white antialiased select-none overflow-hidden touch-manipulation">
+  <div class="device">
   
   <!-- Viewfinder (Container Principal Mobile First) -->
   <div class="relative w-full h-dvh max-w-md mx-auto overflow-hidden bg-black flex flex-col justify-between">
@@ -36,6 +39,9 @@
         <div class="absolute top-1/3 left-0 right-0 h-px bg-white/30"></div>
         <div class="absolute top-2/3 left-0 right-0 h-px bg-white/30"></div>
       </div>
+
+      <!-- Linha de varredura: passa pelo visor enquanto o Cam Assist analisa a cena -->
+      <div id="scan-line" class="scan-line hidden absolute inset-x-0 top-0 h-24 pointer-events-none z-10"></div>
 
       <!-- Barra Superior de Ações -->
       <div class="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-4 pb-6 bg-gradient-to-b from-black/60 to-transparent z-10">
@@ -90,6 +96,14 @@
 
       <!-- BADGES DO JOVI MODES (controlados por js/camera.js) -->
       <div class="absolute bottom-4 inset-x-4 z-10 flex flex-col items-center gap-2 pointer-events-none">
+
+        <!-- Leitura do Cam Assist: cena detectada, tempo de análise e nível de luz -->
+        <span id="ia-chip" class="hidden rounded-full bg-black/55 backdrop-blur-md border border-white/10 px-3 py-1 text-[10px] font-medium text-neutral-200 tabular-nums">IA · analisando cena…</span>
+
+        <!-- Convite para usar a câmera de verdade (some quando ela está ligada) -->
+        <button id="cam-invite" class="pointer-events-auto flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1 text-[11px] font-medium text-neutral-100 active:scale-95 transition">
+          <i data-lucide="camera" class="w-3.5 h-3.5"></i>Usar minha câmera
+        </button>
 
         <!-- Tempo de gravação (só aparece gravando vídeo) -->
         <div id="badge-rec" class="hidden items-center gap-2 rounded-full bg-red-600/90 px-3 py-1 text-xs font-bold tabular-nums">
@@ -157,7 +171,7 @@
         <!-- Mostra a miniatura da última foto; se o arquivo não existir, o ícone aparece -->
         <button id="btn-gallery" aria-label="Abrir galeria" class="relative w-12 h-12 rounded-2xl overflow-hidden bg-neutral-800 border border-neutral-700 flex items-center justify-center active:scale-90 transition">
           <i data-lucide="image" class="w-6 h-6 text-neutral-400"></i>
-          <img src="images/comida-1.jpg" alt="" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()">
+          <img id="gallery-thumb" src="images/comida-1.jpg" alt="" class="absolute inset-0 w-full h-full object-cover">
         </button>
 
         <!-- Obturador (Shutter) -->
@@ -255,6 +269,29 @@
           <span id="opt-sim-valor" class="text-sm text-neutral-400">Desligado</span>
         </button>
 
+        <!-- Câmera real: o feed aparece no visor; a "IA" continua sendo uma simulação -->
+        <button id="opt-cam" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left active:bg-neutral-800 transition">
+          <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+            <i data-lucide="camera" class="w-5 h-5 text-neutral-300"></i>
+          </span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-sm font-medium">Câmera real</span>
+            <span class="block text-xs text-neutral-400">Luz e cor vêm do vídeo; o resto é simulado</span>
+          </span>
+          <span id="opt-cam-valor" class="text-sm text-neutral-400">Desligada</span>
+        </button>
+
+        <!-- Apaga o que o Cam Assist aprendeu (sugestões ignoradas ou automáticas) -->
+        <button id="opt-reset" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left active:bg-neutral-800 transition">
+          <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+            <i data-lucide="rotate-ccw" class="w-5 h-5 text-neutral-300"></i>
+          </span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-sm font-medium">Zerar aprendizado da IA</span>
+            <span class="block text-xs text-neutral-400">O Cam Assist volta a sugerir tudo do zero</span>
+          </span>
+        </button>
+
         <a href="pages/gallery.html" class="w-full flex items-center gap-3 rounded-xl px-3 py-3 active:bg-neutral-800 transition">
           <span class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
             <i data-lucide="images" class="w-5 h-5 text-neutral-300"></i>
@@ -275,6 +312,8 @@
   </div>
 
   <!-- Inicializar Ícones Lucide -->
+  </div>
+
   <script>
     lucide.createIcons();
     document.getElementById('btn-gallery').addEventListener('click', () => {
@@ -282,7 +321,11 @@
     });
   </script>
 
-  <!-- Interações da câmera (HDR, flash, grade, zoom, modos, Context Mode, obturador) -->
+  <!-- Memória compartilhada com a Galeria e o Modes (presets, aprendizado, fotos) -->
+  <script src="js/store.js"></script>
+  <script src="js/shell.js"></script>
+
+  <!-- Interações da câmera (HDR, flash, grade, zoom, modos, Context Mode, obturador, câmera real) -->
   <script src="js/camera.js"></script>
 </body>
 </html>

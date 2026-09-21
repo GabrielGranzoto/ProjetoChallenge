@@ -5,16 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>JOVI Gallery</title>
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CSS: css/tailwind.css é a versão compilada (funciona offline).
+       O CDN abaixo só entra como reforço quando há internet e você criar classes novas. -->
+  <link rel="stylesheet" href="../css/tailwind.css">
+  <script async src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Ícones (SVG inline, arquivo do próprio projeto) -->
+  <script src="../js/icons.js"></script>
 
   <!-- Arquivo de Estilos Externo -->
   <link rel="stylesheet" href="../css/styles.css">
 </head>
 <body class="bg-black text-white antialiased select-none">
+  <div class="device">
 
   <div class="relative w-full min-h-dvh max-w-md mx-auto bg-black">
 
@@ -91,27 +94,48 @@
       </a>
     </nav>
 
-    <!-- VISUALIZADOR -->
+    <!-- VISUALIZADOR: no celular a foto fica em cima e o painel embaixo; no computador, lado a lado -->
     <div id="viewer" class="fixed inset-0 z-30 bg-black hidden">
-      <div class="viewer-in relative w-full h-dvh max-w-md mx-auto flex flex-col">
+      <div class="viewer-in relative w-full h-dvh flex flex-col">
 
-        <div class="flex items-center justify-between px-2 pt-3 pb-2">
-          <button id="viewer-close" aria-label="Fechar"
-                  class="w-11 h-11 rounded-full flex items-center justify-center active:bg-neutral-800 transition">
-            <i data-lucide="arrow-left" class="w-5 h-5"></i>
-          </button>
-          <span id="viewer-date" class="text-sm text-neutral-300"></span>
-          <button id="viewer-delete" aria-label="Excluir"
-                  class="w-11 h-11 rounded-full flex items-center justify-center active:bg-neutral-800 transition">
-            <i data-lucide="trash-2" class="w-5 h-5"></i>
-          </button>
-        </div>
+        <!-- PALCO DA FOTO -->
+        <section class="flex-1 min-w-0 min-h-0 flex flex-col">
+          <div class="flex items-center justify-between px-2 pt-3 pb-2">
+            <button id="viewer-close" aria-label="Fechar"
+                    class="w-11 h-11 rounded-full flex items-center justify-center hover:bg-neutral-800 active:bg-neutral-800 transition">
+              <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </button>
+            <div class="text-center leading-tight">
+              <span id="viewer-date" class="block text-sm text-neutral-300"></span>
+              <span id="viewer-pos" class="block text-[11px] text-neutral-500"></span>
+            </div>
+            <button id="viewer-delete" aria-label="Excluir"
+                    class="w-11 h-11 rounded-full flex items-center justify-center hover:bg-neutral-800 active:bg-neutral-800 transition">
+              <i data-lucide="trash-2" class="w-5 h-5"></i>
+            </button>
+          </div>
 
-        <div id="viewer-img" class="flex-1 bg-contain bg-center bg-no-repeat"></div>
+          <div id="viewer-stage" class="relative flex-1 min-h-0 overflow-hidden" style="touch-action: pan-y">
+            <div id="viewer-img" class="absolute inset-0 bg-contain bg-center bg-no-repeat transition-opacity duration-200"></div>
+            <canvas id="edit-canvas" class="hidden absolute inset-0 w-full h-full object-contain"></canvas>
+            <div id="edit-scan" class="scan-line hidden absolute inset-x-0 top-0 h-24 pointer-events-none"></div>
+            <span id="edit-badge" class="hidden absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-xs font-medium backdrop-blur">Original</span>
 
-        <!-- Detalhes -->
-        <div class="rounded-t-2xl bg-neutral-900 px-4 pt-4 pb-5 space-y-4"
-             style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem)">
+            <button id="viewer-prev" aria-label="Foto anterior" class="nav-arrow left-2">
+              <i data-lucide="chevron-left" class="w-6 h-6"></i>
+            </button>
+            <button id="viewer-next" aria-label="Próxima foto" class="nav-arrow right-2">
+              <i data-lucide="chevron-right" class="w-6 h-6"></i>
+            </button>
+          </div>
+        </section>
+
+        <!-- PAINEL LATERAL / INFERIOR -->
+        <aside class="viewer-panel bg-neutral-900 rounded-t-2xl max-h-[54dvh] overflow-y-auto shrink-0">
+
+          <!-- Detalhes da foto -->
+          <div id="panel-info" class="px-4 pt-4 space-y-4"
+               style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem)">
           <div class="flex items-start justify-between">
             <div>
               <p id="viewer-preset" class="text-base font-semibold"></p>
@@ -146,10 +170,57 @@
             <p id="viewer-tip"></p>
           </div>
 
+
+            <button id="viewer-edit" class="ia-btn w-full rounded-full py-3 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition">
+              <i data-lucide="sparkles" class="w-4 h-4"></i> Editar com IA
+            </button>
+
           <button id="viewer-best" class="hidden w-full rounded-full border border-neutral-700 py-2.5 text-sm font-medium active:bg-neutral-800 transition">
             Ver a melhor foto da sequência
           </button>
-        </div>
+          </div>
+
+          <!-- Edição com IA -->
+          <div id="panel-edit" class="px-4 pt-4 space-y-4"
+               style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem)">
+            <div class="flex items-center justify-between">
+              <button id="edit-cancel" class="text-sm text-neutral-300 px-2 py-1 -ml-2 rounded-lg hover:bg-neutral-800 transition">Cancelar</button>
+              <p class="text-sm font-semibold">Editar com IA</p>
+              <button id="edit-save" disabled class="rounded-full bg-amber-400 text-black text-sm font-semibold px-4 py-1.5 disabled:opacity-40 active:scale-95 transition">Salvar</button>
+            </div>
+
+            <div class="flex items-center justify-between rounded-xl bg-neutral-800/60 px-3 py-2">
+              <span class="text-xs text-neutral-400">Score JOVI</span>
+              <span id="edit-score" class="text-lg font-semibold text-amber-400 tabular-nums"></span>
+            </div>
+
+            <button id="edit-auto" class="ia-btn w-full rounded-full py-3 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-70">
+              <i data-lucide="sparkles" class="w-4 h-4"></i><span>Auto-melhorar com IA</span>
+            </button>
+            <div id="edit-found" class="hidden rounded-xl border border-neutral-800 p-3"></div>
+
+            <div>
+              <p class="text-xs text-neutral-500 mb-2">Filtros</p>
+              <div class="modes-scroll overflow-x-auto -mx-4 px-4">
+                <div id="edit-filters" class="flex gap-2 whitespace-nowrap"></div>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-xs text-neutral-500 mb-2">Ajustes</p>
+              <div id="edit-sliders" class="space-y-3"></div>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+              <button id="edit-reset" disabled class="flex-1 rounded-full border border-neutral-700 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-40 active:bg-neutral-800 transition">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Refazer
+              </button>
+              <button id="edit-compare" class="flex-1 rounded-full border border-neutral-700 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 active:bg-neutral-800 transition select-none" style="touch-action:none">
+                <i data-lucide="eye" class="w-4 h-4"></i> Segure p/ comparar
+              </button>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
 
@@ -159,7 +230,12 @@
 
   </div>
 
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/shell.js"></script>
   <script src="../js/score.js"></script>
+  <script src="../js/editor.js"></script>
   <script src="../js/gallery.js"></script>
 </body>
 </html>
