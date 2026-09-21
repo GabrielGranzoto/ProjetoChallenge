@@ -44,7 +44,7 @@
   const esquerda = `
     <aside class="side" aria-label="Sobre o projeto">
       <div class="side-card">
-        <p class="text-xs" style="color:#a78bfa;font-weight:600;letter-spacing:.12em">CHALLENGE FIAP · VIVO</p>
+        <p class="text-xs" style="color:#a78bfa;font-weight:600;letter-spacing:.12em">CHALLENGE FIAP</p>
         <h1 class="side-brand mt-2">JOVI <span>Cam Assist</span></h1>
         <p class="mt-3">A câmera que entende o que você fotografa e sugere o melhor ajuste em um toque. Protótipo de demonstração, sem envio de imagens para servidor.</p>
       </div>
@@ -77,7 +77,7 @@
             <span><strong style="font-weight:600;color:#fff">${t}</strong><br><span style="font-size:.78rem;color:#8a8a8a">${d}</span></span>
           </div>`).join('')}
       </div>
-      <p style="padding:0 6px;font-size:.72rem">Equipe 1TDS · Enzo, Deivid, Gabriel, Luiz e Daniel</p>
+      <p style="padding:0 6px;font-size:.72rem">Equipe 1TDS · Enzo, Deivid, Gabriel e Daniel</p>
     </aside>`;
 
   const casca = document.createElement('div');
